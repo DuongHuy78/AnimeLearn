@@ -1,6 +1,7 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { PlayCircle, Search, BookOpen, Tv, GraduationCap } from 'lucide-react'
@@ -50,8 +51,12 @@ function App() {
             <a href="#" className="hover:text-red-500 transition-colors">Vocabulary</a>
           </div>
           <div className="flex items-center gap-4">
-            <Button variant="ghost" className="hidden sm:inline-flex">Log in</Button>
-            <Button className="bg-red-500 hover:bg-red-600 text-white">Start Learning</Button>
+            <Link to="/login">
+              <Button variant="ghost" className="hidden sm:inline-flex hover:text-red-500">Log in</Button>
+            </Link>
+            <Link to="/signup">
+              <Button className="bg-red-500 hover:bg-red-600 text-white rounded-lg">Start Learning</Button>
+            </Link>
           </div>
         </div>
       </nav>
