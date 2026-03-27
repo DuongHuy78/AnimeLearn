@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const genreSchema = new mongoose.Schema({
     name: { type: String, required: true },
@@ -6,4 +6,4 @@ const genreSchema = new mongoose.Schema({
     slug: { type: String, required: true, unique: true } // Ví dụ: 'anime-hanh-dong'
 });
 
-module.exports = mongoose.model('Genre', genreSchema);
+export default mongoose.model('Genre', genreSchema);

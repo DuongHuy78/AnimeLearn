@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const userSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true },
@@ -10,7 +10,7 @@ const userSchema = new mongoose.Schema({
     ban_reason: { type: String, default: null },
     banned_until: { type: Date, default: null }
 }, { 
-    timestamps: true // Tự động tạo created_at và updated_at
+    timestamps: true // Tự động tạo createdAt và updatedAt
 });
 
-module.exports = mongoose.model('User', userSchema);
+export default mongoose.model('User', userSchema);

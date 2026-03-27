@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const vocabularySchema = new mongoose.Schema({
     user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -10,4 +10,4 @@ const vocabularySchema = new mongoose.Schema({
     script_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Script' }
 }, { timestamps: true });
 
-module.exports = mongoose.model('Vocabulary', vocabularySchema);
+export default mongoose.model('Vocabulary', vocabularySchema);

@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const scriptSchema = new mongoose.Schema({
     video_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Video', required: true },
@@ -16,4 +16,4 @@ const scriptSchema = new mongoose.Schema({
 // Đánh chỉ mục (Index) kép để tăng tốc độ tìm kiếm phụ đề theo video và thời gian
 scriptSchema.index({ video_id: 1, start_time: 1 });
 
-module.exports = mongoose.model('Script', scriptSchema);
+export default mongoose.model('Script', scriptSchema);
