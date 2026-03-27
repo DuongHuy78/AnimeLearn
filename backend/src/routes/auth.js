@@ -1,7 +1,7 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
-import User from '../../models/User.js';
-import { authMiddleware } from '../../middleware/auth.js';
+import User from '../models/User.js';
+import { authMiddleware } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -57,7 +57,7 @@ router.get('/me', authMiddleware, async (req, res) => {
     }
 
     const user = await User.findById(req.user.id);
-    
+
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }

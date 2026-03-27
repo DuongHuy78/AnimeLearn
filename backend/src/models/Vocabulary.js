@@ -1,13 +1,45 @@
 import mongoose from 'mongoose';
 
-const vocabularySchema = new mongoose.Schema({
-    user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    word: { type: String, required: true },
-    meaning: { type: String, required: true },
-    label_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Label' },
-    // Liên kết bối cảnh (Context linking)
-    video_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Video' },
-    script_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Script' }
-}, { timestamps: true });
+const VocabularySchema = new mongoose.Schema({
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  word: {
+    type: String,
+    required: true
+  },
+  reading: {
+    type: String
+  },
+  meaning_vi: {
+    type: String
+  },
+  meaning_en: {
+    type: String
+  },
+  part_of_speech: {
+    type: String
+  },
+  jlpt_level: {
+    type: String,
+    default: 'Unknown'
+  },
+  example_sentence: {
+    type: String
+  },
+  example_meaning: {
+    type: String
+  },
+  review_date: {
+    type: Date,
+    default: Date.now
+  },
+  saved_at: {
+    type: Date,
+    default: Date.now
+  }
+});
 
-export default mongoose.model('Vocabulary', vocabularySchema);
+export default mongoose.model('Vocabulary', VocabularySchema);

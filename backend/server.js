@@ -5,8 +5,10 @@ import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 
 // Import routes
-import authRoutes from './src/routers/auth.js';
-import homeRoutes from './src/routers/home.js';
+import authRoutes from './src/routes/auth.js';
+import homeRoutes from './src/routes/home.js';
+import videoRoutes from './src/routes/video.js';
+
 
 // Load environment variables
 dotenv.config();
@@ -26,7 +28,7 @@ app.use(express.json()); // Allows us to parse JSON data in the request body
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
     console.log('✅ Connected to MongoDB successfully');
-    
+
     // Start the server only after connecting to the database
     app.listen(PORT, () => {
       console.log(`🚀 Server is running on http://localhost:${PORT}`);
@@ -39,6 +41,7 @@ mongoose.connect(process.env.MONGO_URI)
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/home', homeRoutes);
+app.use('/api/video', videoRoutes);
 
 // Basic test route
 app.get('/api/health', (req, res) => {
