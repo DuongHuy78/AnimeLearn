@@ -8,9 +8,11 @@ import cookieParser from 'cookie-parser';
 import authRoutes from './src/routes/auth.js';
 import homeRoutes from './src/routes/home.js';
 import videoRoutes from './src/routes/video.js';
+import chatRoutes from './src/routes/chat.js';
 
 
 // Load environment variables
+dotenv.config({ path: '.evn' });
 dotenv.config();
 
 const app = express();
@@ -42,6 +44,7 @@ mongoose.connect(process.env.MONGO_URI)
 app.use('/api/auth', authRoutes);
 app.use('/api/home', homeRoutes);
 app.use('/api/video', videoRoutes);
+app.use('/api/chat', chatRoutes);
 
 // Basic test route
 app.get('/api/health', (req, res) => {

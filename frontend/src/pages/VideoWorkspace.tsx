@@ -13,6 +13,7 @@ import ScriptPanel, { type ScriptLine } from '../components/video/ScriptPanel';
 import SubtitleOverlay from '../components/video/SubtitleOverlay';
 import PlayerControls from '../components/video/PlayerControls';
 import VocabularyPopup from '../components/video/VocabularyPopup';
+import VideoRagChatWidget from '../components/video/VideoRagChatWidget';
 import QuizPage from './QuizPage'; // <-- Import trang QuizPage
 
 // 1. Định nghĩa Interfaces
@@ -373,6 +374,8 @@ export default function VideoWorkspace() {
           onSave={() => { setSelectedWord(null); setSelectedVocabData(null); }}
         />
       )}
+
+      <VideoRagChatWidget videoId={videoId} />
     </div>
   );
 }

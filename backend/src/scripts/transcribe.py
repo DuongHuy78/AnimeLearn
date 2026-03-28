@@ -16,9 +16,35 @@ except ImportError:
     sys.exit(1)
 
 sys.stdout.reconfigure(encoding='utf-8')
+sys.stderr.reconfigure(encoding='utf-8')
 
 def print_err(msg):
     print(msg, file=sys.stderr, flush=True)
+
+def build_tagger():
+    # Prefer bundled UniDic-Lite to avoid relying on a system-wide MeCab config on Windows.
+    try:
+        import importlib
+        unidic_lite = importlib.import_module("unidic_lite")
+        dicdir = unidic_lite.DICDIR
+        mecabrc = os.path.join(dicdir, "mecabrc")
+        opts = f'-d "{dicdir}" -r "{mecabrc}"'
+        return fugashi.Tagger(opts)
+    except Exception as e:
+        print_err(f"Cảnh báo: Không dùng được unidic-lite cho Fugashi: {e}")
+
+    try:
+        return fugashi.Tagger()
+    except Exception as e:
+        print_err(f"Cảnh báo: Không khởi tạo được Fugashi: {e}")
+        return None
+
+def safe_feature_attr(feature, attr_name, default=""):
+    try:
+        value = getattr(feature, attr_name, default)
+        return value if value else default
+    except Exception:
+        return default
 
 def extract_audio_from_video(video_path: str) -> str:
     if shutil.which("ffmpeg") is None:
@@ -107,6 +133,7 @@ def main():
                 tmp_audio_created = True
 
         model_id = "small"
+        # model_id = "kotoba-tech/kotoba-whisper-v2.0"
         print_err(f"Load model: {model_id}")
 
         try:
@@ -117,8 +144,12 @@ def main():
             model = WhisperModel(model_id, device="cpu", compute_type="int8")
 
         print_err("Đang khởi tạo bộ phân tích (Fugashi) và Trình dịch (Google Translator)...")
-        tagger = fugashi.Tagger()
+        tagger = build_tagger()
         translator = GoogleTranslator(source='ja', target='vi')
+
+        if tagger is None:
+            print_err("Tiếp tục không tách từ vựng chi tiết vì Fugashi chưa sẵn sàng.")
+            print_err(f"Python đang dùng: {sys.executable}")
 
         print_err("Transcribing & Dịch thuật...")
         segments, info = model.transcribe(
@@ -144,10 +175,10 @@ def main():
             vocab_list = []
             seen_words = set()
             
-            if ja_text:
+            if ja_text and tagger is not None:
                 for word in tagger(ja_text):
                     # Chỉ quét các loại từ chính
-                    pos = word.feature.pos1 if hasattr(word.feature, 'pos1') else ""
+                    pos = safe_feature_attr(word.feature, 'pos1')
                     
                     if pos in ("名詞", "動詞", "形容詞", "副詞"): # Danh từ, động từ, tính từ, trạng từ
                         lemma = word.feature.lemma if hasattr(word.feature, 'lemma') and word.feature.lemma else word.surface
@@ -157,7 +188,7 @@ def main():
                             continue
                         seen_words.add(lemma)
                         
-                        reading = word.feature.kana if hasattr(word.feature, 'kana') and word.feature.kana else ""
+                        reading = safe_feature_attr(word.feature, 'kana')
                         
                         meaning = ""
                         try:
