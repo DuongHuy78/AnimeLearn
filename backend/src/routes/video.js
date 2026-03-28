@@ -1,13 +1,38 @@
 import express from 'express';
 import { spawn } from 'child_process';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { authMiddleware } from '../middleware/auth.js';
 import Vocabulary from '../models/Vocabulary.js';
 import Video from '../models/Video.js';
+import { indexVideoScript } from '../services/ragChatService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+function resolvePythonCommand() {
+  if (process.env.PYTHON_PATH) {
+    return process.env.PYTHON_PATH;
+  }
+
+  const projectRoot = path.resolve(__dirname, '../../..');
+  const venvCandidates = [
+    path.join(projectRoot, '.venv', 'Scripts', 'python.exe'),
+    path.join(projectRoot, '.venv', 'bin', 'python')
+  ];
+
+  for (const candidate of venvCandidates) {
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+
+  return 'python';
+}
+
+const PYTHON_CMD = resolvePythonCommand();
+console.log(`[Video Route] Using Python interpreter: ${PYTHON_CMD}`);
 
 const router = express.Router();
 
@@ -22,10 +47,27 @@ router.post('/analyze', (req, res) => {
   const scriptPath = path.join(__dirname, '../scripts/transcribe.py');
 
   // Start python process
-  const pythonProcess = spawn('python', [scriptPath, url]);
+  const pythonProcess = spawn(PYTHON_CMD, [scriptPath, url]);
 
   const stdoutChunks = [];
   let errorString = '';
+  let isHandled = false;
+
+  const tryParseScriptJson = (rawOutput) => {
+    const text = (rawOutput || '').trim();
+    const startIndex = text.indexOf('[{');
+    const endIndex = text.lastIndexOf('}]');
+    const emptyStartIndex = text.indexOf('[]');
+
+    if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
+      return JSON.parse(text.substring(startIndex, endIndex + 2));
+    }
+    if (emptyStartIndex !== -1) {
+      return [];
+    }
+
+    throw new Error('Không tìm thấy dữ liệu mảng JSON trong chuỗi trả về.');
+  };
 
   pythonProcess.stdout.on('data', (data) => {
     stdoutChunks.push(data);
@@ -36,31 +78,26 @@ router.post('/analyze', (req, res) => {
     console.error(`[Python Log]: ${data.toString().trim()}`);
   });
 
-  pythonProcess.on('close', (code) => {
-    if (code !== 0) {
-      console.error(`Process exited with code ${code}. Error: ${errorString}`);
-      return res.status(500).json({ error: 'Failed to transcribe video', details: errorString });
-    }
+  pythonProcess.on('error', (err) => {
+    if (isHandled) return;
+    isHandled = true;
+    console.error(`Failed to start Python process: ${err.message}`);
+    return res.status(500).json({ error: 'Failed to start transcription process', details: err.message });
+  });
 
-    let dataString = '';
+  pythonProcess.on('close', (code, signal) => {
+    if (isHandled) return;
+    isHandled = true;
+    const dataString = Buffer.concat(stdoutChunks).toString('utf8');
+
+    // Some Windows setups may still produce a non-zero exit code although valid JSON was emitted.
+    // If stdout contains parseable script JSON, return success and keep stderr only for logging.
     try {
-      dataString = Buffer.concat(stdoutChunks).toString('utf8').trim();
+      const result = tryParseScriptJson(dataString);
 
-      // Trích xuất JSON bằng cách khoanh vùng cụm mảng [{ ... }] để loại bỏ mọi chuỗi tải [download] nhiễu bị dính cùng dòng do \r
-      const startIndex = dataString.indexOf('[{');
-      const endIndex = dataString.lastIndexOf('}]');
-      const emptyStartIndex = dataString.indexOf('[]');
-
-      let cleanJson = '';
-      if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
-        cleanJson = dataString.substring(startIndex, endIndex + 2);
-      } else if (emptyStartIndex !== -1) {
-        cleanJson = '[]';
-      } else {
-        throw new Error("Không tìm thấy dữ liệu mảng JSON trong chuỗi trả về.");
+      if (code !== 0 || signal) {
+        console.warn(`[analyze] Python exited with code=${code}, signal=${signal ?? 'none'} but returned valid JSON output.`);
       }
-
-      const result = JSON.parse(cleanJson);
 
       return res.json({
         title: "Youtube Video (Auto-Transcription)",
@@ -68,8 +105,16 @@ router.post('/analyze', (req, res) => {
         script: result
       });
     } catch (parseError) {
+      console.error(`Process exited with code=${code}, signal=${signal ?? 'none'}. stderr: ${errorString}`);
       console.error('Failed to parse Python output:', dataString);
-      return res.status(500).json({ error: 'Invalid output format from transcription script' });
+
+      const baseError = code !== 0 || signal ? 'Failed to transcribe video' : 'Invalid output format from transcription script';
+      return res.status(500).json({
+        error: baseError,
+        details: errorString,
+        exitCode: code,
+        signal: signal ?? null
+      });
     }
   });
 });
@@ -84,16 +129,36 @@ import sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 try:
     import fugashi
+    try:
+      import unidic_lite
+    except Exception:
+      unidic_lite = None
     from deep_translator import GoogleTranslator
+
+    def build_tagger():
+      if unidic_lite is not None:
+        try:
+          import os
+          dicdir = unidic_lite.DICDIR
+          mecabrc = os.path.join(dicdir, "mecabrc")
+          return fugashi.Tagger(f'-d "{dicdir}" -r "{mecabrc}"')
+        except Exception:
+          pass
+      try:
+        return fugashi.Tagger()
+      except Exception:
+        return None
+
     word = sys.argv[1]
-    tagger = fugashi.Tagger()
+    tagger = build_tagger()
     translator = GoogleTranslator(source='ja', target='vi')
     
     meaning = translator.translate(word)
     reading = ""
     pos = "Chưa rõ"
     
-    for node in tagger(word):
+    if tagger is not None:
+      for node in tagger(word):
         pos = node.feature.pos1 if hasattr(node.feature, 'pos1') else ""
         reading = node.feature.kana if hasattr(node.feature, 'kana') else ""
         break # lấy node đầu tiên
@@ -108,7 +173,7 @@ except Exception as e:
     print(json.dumps({"error": str(e)}))
 `;
 
-  const pythonProcess = spawn('python', ['-c', pythonScript, word]);
+  const pythonProcess = spawn(PYTHON_CMD, ['-c', pythonScript, word]);
   let outData = '';
 
   pythonProcess.stdout.on('data', (data) => {
@@ -156,7 +221,8 @@ router.post('/save-word', authMiddleware, async (req, res) => {
 
 router.post('/save', authMiddleware, async (req, res) => {
   try {
-    const { title, youtube_url, jlpt_level, script } = req.body;
+  console.log("\nDa toi dayyyyyyyyyyyyyyyyyyyyyyyyyy\n");    
+  const { title, youtube_url, jlpt_level, script } = req.body;
 
     const ytMatch = youtube_url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?\s]+)/);
     const ytId = ytMatch ? ytMatch[1] : null;
@@ -173,7 +239,20 @@ router.post('/save', authMiddleware, async (req, res) => {
 
     await newVideo.save();
 
-    res.status(201).json({ message: 'Lưu Video Script thành công', videoId: newVideo._id });
+    // Index script into vector DB in background flow for RAG chat by current video.
+    let ragIndexStatus = { ok: false, message: 'RAG index was not started' };
+    try {
+      ragIndexStatus = await indexVideoScript(newVideo._id, script || []);
+    } catch (ragError) {
+      ragIndexStatus = { ok: false, message: ragError.message };
+      console.error('RAG indexing failed:', ragError.message);
+    }
+
+    res.status(201).json({
+      message: 'Lưu Video Script thành công',
+      videoId: newVideo._id,
+      rag: ragIndexStatus
+    });
   } catch (error) {
     console.error('Lỗi khi lưu video:', error);
     res.status(500).json({ error: error.message });
