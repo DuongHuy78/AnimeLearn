@@ -221,7 +221,7 @@ router.post('/save-word', authMiddleware, async (req, res) => {
 
 router.post('/save', authMiddleware, async (req, res) => {
   try {
-  console.log("\nDa toi dayyyyyyyyyyyyyyyyyyyyyyyyyy\n");    
+  console.log("\nĐã tới router save\n");    
   const { title, youtube_url, jlpt_level, script } = req.body;
 
     const ytMatch = youtube_url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?\s]+)/);
@@ -239,19 +239,23 @@ router.post('/save', authMiddleware, async (req, res) => {
 
     await newVideo.save();
 
-    // Index script into vector DB in background flow for RAG chat by current video.
+    // thêm nội dung video hiện tại vào vector DB
     let ragIndexStatus = { ok: false, message: 'RAG index was not started' };
-    try {
-      ragIndexStatus = await indexVideoScript(newVideo._id, script || []);
-    } catch (ragError) {
-      ragIndexStatus = { ok: false, message: ragError.message };
-      console.error('RAG indexing failed:', ragError.message);
-    }
+    ragIndexStatus = indexVideoScript(newVideo._id, script || [])
+      .then((ragResult) => {
+        // Khi nào xong thì log kết quả ra console của server
+        console.log('RAG indexing completed...', ragResult);
+      })
+      .catch((ragError) => {
+        // Nếu lỗi thì log lỗi, không làm ảnh hưởng đến request đã trả về cho user
+        console.error('RAG indexing failed...', ragError);
+      });
 
+    // Trả về response ngay lập tức
     res.status(201).json({
       message: 'Lưu Video Script thành công',
       videoId: newVideo._id,
-      rag: ragIndexStatus
+      rag: { ok: true, message: 'RAG indexing started asynchronously' }
     });
   } catch (error) {
     console.error('Lỗi khi lưu video:', error);
