@@ -1,10 +1,34 @@
 'use client'
 
 import { useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
+import moment from 'moment'
+import { FaBook, FaCheckCircle, FaGamepad } from 'react-icons/fa'
 
-// Header Component
+// Interfaces
+interface VideoItem {
+  id: string;
+  title: string;
+  created_date: string;
+  jlpt_level?: string;
+  youtube_id?: string;
+}
+
+// Mock Data
+const mockVideos: VideoItem[] = [
+  { id: 'vid1', title: 'My Hero Academia Final Season Opening Cover', created_date: '2026-03-13T10:00:00Z', jlpt_level: 'N3', youtube_id: 'Y0MZQMQrOLU' },
+  { id: 'vid2', title: '呪術廻戦 懐玉・玉折(過去編) [青のすみか/キタニタツヤ]', created_date: '2026-03-12T15:30:00Z', jlpt_level: 'N4', youtube_id: 'ED1zGslwM8o' },
+  { id: 'vid3', title: 'Attack on Titan - Advanced Grammar & Expressions N2', created_date: '2026-03-11T09:00:00Z', jlpt_level: 'N2', youtube_id: 'd6qCbdXqsOs' },
+];
+
+// Mock API
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const mockApi = {
+  getVideos: async () => { await delay(800); return mockVideos; },
+};
 function Header() {
   const navigate = useNavigate()
   
@@ -88,21 +112,30 @@ function Hero() {
 
         <div className="relative">
           <div className="bg-gray-900 rounded-lg overflow-hidden shadow-2xl">
-            <div className="aspect-video bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-purple-500/20"></div>
-              <div className="relative z-10 text-center">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-white/10 rounded-full mb-4 backdrop-blur-sm">
-                  <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
-                  </svg>
-                </div>
-                <p className="text-white text-sm">Anime Lessons</p>
-              </div>
+            <div className="aspect-video bg-gradient-to-br from-gray-800 to-gray-900 relative">
+              <iframe
+                width="100%"
+                height="100%"
+                src="https://www.youtube.com/embed/XMeQeIG_rQg"
+                title="Anime Lessons"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                className="absolute inset-0"
+              ></iframe>
 
-              <div className="absolute bottom-0 right-0 m-6 bg-gray-800/90 backdrop-blur rounded-lg p-4 max-w-xs border border-gray-700">
-                <p className="text-gray-400 text-xs mb-2">NOW STREAMING</p>
-                <h3 className="text-white font-semibold mb-1">Jujutsu Kaisen: Cursed Energy Vocabulary</h3>
-                <p className="text-gray-400 text-xs">Essential anime vocabulary</p>
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-r from-gray-900/98 to-transparent backdrop-blur p-6 z-10">
+                <div className="flex items-center gap-4">
+                  <button className="flex-shrink-0 w-14 h-14 bg-white rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors shadow-lg">
+                    <svg className="w-6 h-6 text-gray-900 ml-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                    </svg>
+                  </button>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-emerald-400 text-xs font-bold uppercase tracking-wide">NOW STREAMING</p>
+                    <h3 className="text-white font-bold text-lg leading-tight truncate">Black Clover Opening 10 | Black Catcher</h3>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -114,29 +147,11 @@ function Hero() {
 
 // Trending Lessons Component
 function TrendingLessons() {
-  const lessons = [
-    {
-      id: 1,
-      title: 'Naruto: Basic Greetings',
-      description: 'Learn essential greetings',
-      tag: 'IKKA',
-      color: 'from-orange-400 to-orange-600'
-    },
-    {
-      id: 2,
-      title: 'One Piece: Battle Expressions',
-      description: 'Powerful expressions and phrases',
-      tag: 'IKKA',
-      color: 'from-amber-400 to-amber-600'
-    },
-    {
-      id: 3,
-      title: 'Your Name: Romantic Vocab',
-      description: 'Emotional expressions and love phrases',
-      tag: 'IKKA',
-      color: 'from-orange-400 to-red-600'
-    }
-  ]
+  const { data: videos = [], isLoading: videoLoading } = useQuery<VideoItem[]>({
+    queryKey: ['home-trending-videos'],
+    queryFn: mockApi.getVideos,
+    initialData: [],
+  });
 
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
@@ -151,39 +166,63 @@ function TrendingLessons() {
         </a>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-6">
-        {lessons.map((lesson) => (
-          <Card 
-            key={lesson.id}
-            className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer group border-0"
-          >
-            <div className={`aspect-video bg-gradient-to-br ${lesson.color} relative overflow-hidden`}>
-              <div className="absolute inset-0 opacity-20 bg-pattern"></div>
-              <div className="absolute top-4 left-4">
-                <span className="text-white text-xs font-bold bg-black/40 px-3 py-1 rounded-full">
-                  {lesson.tag}
-                </span>
+      {videoLoading ? (
+        <div className="grid md:grid-cols-3 gap-6">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="overflow-hidden rounded-lg">
+              <Skeleton className="aspect-video bg-slate-100" />
+              <div className="p-6 space-y-3">
+                <Skeleton className="h-6 w-full bg-slate-100" />
+                <Skeleton className="h-4 w-2/3 bg-slate-100" />
               </div>
-              <div className="absolute inset-0 flex items-center justify-center group-hover:opacity-100 opacity-0 transition-opacity">
-                <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
-                  <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
-                  </svg>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid md:grid-cols-3 gap-6">
+          {videos.slice(0, 3).map((video) => {
+            return (
+              <Card 
+                key={video.id}
+                className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer group border-0 flex flex-col h-full"
+              >
+                <div className="aspect-video bg-gradient-to-br from-gray-800 to-gray-900 relative overflow-hidden">
+                  {video.youtube_id && (
+                    <iframe
+                      width="100%"
+                      height="100%"
+                      src={`https://www.youtube.com/embed/${video.youtube_id}`}
+                      title={video.title}
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      className="absolute inset-0"
+                    ></iframe>
+                  )}
                 </div>
-              </div>
-            </div>
 
-            <div className="p-6">
-              <h3 className="font-bold text-lg mb-2 group-hover:text-emerald-600 transition-colors">
-                {lesson.title}
-              </h3>
-              <p className="text-gray-600 text-sm">
-                {lesson.description}
-              </p>
-            </div>
-          </Card>
-        ))}
-      </div>
+                <div className="p-6 flex-1 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-bold text-lg group-hover:text-emerald-600 transition-colors line-clamp-2 flex-1">
+                        {video.title}
+                      </h3>
+                      {video.jlpt_level && (
+                        <span className="text-white text-xs font-bold bg-emerald-600 px-2 py-1 rounded ml-2 whitespace-nowrap">
+                          {video.jlpt_level}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-gray-600 text-sm mt-2">
+                    {moment(video.created_date).fromNow()}
+                  </p>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </section>
   )
 }
@@ -193,19 +232,19 @@ function WhyLearn() {
   const features = [
     {
       id: 1,
-      icon: '📚',
+      icon: FaBook,
       title: 'Contextual Learning',
       description: 'Don\'t just memorize words. See how native speakers use them in high-stakes dramatic situations.'
     },
     {
       id: 2,
-      icon: '✓',
+      icon: FaCheckCircle,
       title: 'Interactive Quizzes',
       description: 'Instantly test your retention with dynamic flashcard and multiple-choice offer key concepts, Mastery mode available.'
     },
     {
       id: 3,
-      icon: '🎮',
+      icon: FaGamepad,
       title: 'Gamified Progress',
       description: 'Earn XP with legendary character unlocks and leaderboards as you level up your fluency.'
     }
@@ -219,15 +258,20 @@ function WhyLearn() {
       </div>
 
       <div className="grid md:grid-cols-3 gap-12">
-        {features.map((feature) => (
-          <div key={feature.id} className="text-center">
-            <div className="text-5xl mb-4">{feature.icon}</div>
-            <h3 className="text-xl font-bold mb-3">{feature.title}</h3>
-            <p className="text-gray-600 leading-relaxed">
-              {feature.description}
-            </p>
-          </div>
-        ))}
+        {features.map((feature) => {
+          const IconComponent = feature.icon
+          return (
+            <div key={feature.id} className="text-center">
+              <div className="flex justify-center mb-4">
+                <IconComponent className="text-5xl text-emerald-600" />
+              </div>
+              <h3 className="text-xl font-bold mb-3">{feature.title}</h3>
+              <p className="text-gray-600 leading-relaxed">
+                {feature.description}
+              </p>
+            </div>
+          )
+        })}
       </div>
     </section>
   )
@@ -240,57 +284,53 @@ function ChoosePath() {
       id: 1,
       level: 'Beginner (N5-N4)',
       description: 'Start from zero. Learn Hiragana, Katakana, and basic survival phrases using slice-of-the-anime.',
-      lessons: '240+',
-      color: 'from-blue-50 to-cyan-50',
-      borderColor: 'border-blue-200'
+      lessons: '240+'
     },
     {
       id: 2,
       level: 'Intermediate (N3-N2)',
       description: 'Bridge the gap. Dive into complex grammar and thousands of Kanji through iconic scenes.',
-      lessons: '180+',
-      color: 'from-purple-50 to-pink-50',
-      borderColor: 'border-purple-200'
+      lessons: '180+'
     },
     {
       id: 3,
       level: 'Advanced (N1)',
-      description: 'Master the nuances. Finally political dramas and philosophical dialogue for near-native comprehension.',
-      lessons: '95+',
-      color: 'from-green-50 to-emerald-50',
-      borderColor: 'border-green-200'
+      description: 'Master the nuances. Study political drama and philosophical dialogue for near-native comprehension.',
+      lessons: '95+'
     }
   ]
 
   return (
     <section className="bg-gray-100 py-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h2 className="text-4xl font-bold mb-12">Choose Your Path</h2>
+        <h2 className="text-3xl font-bold text-gray-900 mb-12">Choose Your Path</h2>
 
         <div className="space-y-4">
           {paths.map((path) => (
             <Card
               key={path.id}
-              className={`p-8 border-l-4 border-l-emerald-600 bg-gradient-to-r ${path.color} hover:shadow-lg transition-all cursor-pointer group`}
+              className="p-8 border-l-4 border-l-emerald-600 bg-white hover:shadow-md transition-shadow cursor-pointer group"
             >
               <div className="flex items-center justify-between">
                 <div className="flex-1">
-                  <h3 className="text-2xl font-bold mb-3 group-hover:text-emerald-600 transition-colors">
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">
                     {path.level}
                   </h3>
-                  <p className="text-gray-700 leading-relaxed max-w-2xl">
+                  <p className="text-gray-600 text-sm leading-relaxed">
                     {path.description}
                   </p>
                 </div>
-                <div className="text-right ml-8">
-                  <p className="text-4xl font-bold text-emerald-600 mb-1">
-                    {path.lessons}
-                  </p>
-                  <p className="text-xs text-gray-600 uppercase tracking-wide">
-                    Lessons Available
-                  </p>
-                  <button className="mt-6 text-emerald-600 hover:text-emerald-700 transition-colors">
-                    <svg className="w-6 h-6 ml-auto" fill="currentColor" viewBox="0 0 20 20">
+                <div className="text-right ml-8 flex items-center gap-4 shrink-0">
+                  <div>
+                    <p className="text-3xl font-bold text-emerald-700 mb-1">
+                      {path.lessons}
+                    </p>
+                    <p className="text-xs text-gray-500 uppercase tracking-wider">
+                      Lessons Available
+                    </p>
+                  </div>
+                  <button className="text-emerald-600 hover:text-emerald-700 transition-colors">
+                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
                     </svg>
                   </button>
@@ -310,22 +350,22 @@ function CTASection() {
   
   return (
     <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-      <div className="bg-gradient-to-br from-emerald-600 to-teal-600 rounded-2xl p-12 text-center text-white">
+      <div className="bg-emerald-700 rounded-3xl p-12 text-center text-white">
         <h2 className="text-4xl font-bold mb-4">
           Ready to start your journey?
         </h2>
-        <p className="text-lg mb-8 opacity-95">
+        <p className="text-lg mb-8 text-emerald-50">
           Stop watching with subtitles. Start living the language. Join thousands of fans today.
         </p>
         
         <Button 
-          className="bg-white hover:bg-gray-100 text-emerald-600 font-semibold px-8 py-6 text-base"
+          className="bg-white hover:bg-gray-100 text-emerald-700 font-semibold px-8 py-3 text-base rounded-full"
           onClick={() => navigate('/signup')}
         >
           Sign Up Now
         </Button>
 
-        <p className="mt-6 text-sm opacity-75">
+        <p className="mt-6 text-sm text-emerald-100">
           7-day free trial • No credit card required
         </p>
       </div>
