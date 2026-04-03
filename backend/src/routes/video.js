@@ -194,7 +194,7 @@ router.post('/save-word', authMiddleware, async (req, res) => {
     const { word, reading, meaning_vi, meaning_en, part_of_speech, jlpt_level, example_sentence, example_meaning } = req.body;
 
     // Check if word already exists for this user
-    const existing = await Vocabulary.findOne({ user: req.user.userId, word });
+    const existing = await Vocabulary.findOne({ user: req.user.id || req.user.userId, word });
     if (existing) {
       return res.status(400).json({ message: 'Từ này đã có trong sổ tay' });
     }
