@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import YouTubeOrigin from 'react-youtube';
 import { useQueryClient } from '@tanstack/react-query';
 
-// Sửa lỗi trắng màn do CommonJS/ESM interop trong Vite
 const YouTube = (YouTubeOrigin as any).default || YouTubeOrigin;
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
