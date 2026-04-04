@@ -31,11 +31,12 @@ const jlptColors: Record<string, string> = {
 };
 
 const levelNames: Record<string, string> = {
-  N5: 'Sơ cấp',
-  N4: 'Sơ - Trung cấp',
-  N3: 'Trung cấp',
-  N2: 'Trung - Cao cấp',
-  N1: 'Cao cấp',
+  N5: 'Sơ cấp (N5)',
+  N4: 'Sơ - Trung cấp (N4)',
+  N3: 'Trung cấp (N3)',
+  N2: 'Trung - Cao cấp (N2)',
+  N1: 'Cao cấp (N1)',
+  Mixed: 'Học tự do (Nguồn ngoài)',
 };
 
 // 4. Gắn type và set giá trị mặc định cho videos là mảng rỗng
@@ -74,6 +75,7 @@ export default function VideosByLevel({ videos = [], isLoading }: VideosByLevelP
     N3: videos.filter(v => v.jlpt_level === 'N3'),
     N2: videos.filter(v => v.jlpt_level === 'N2'),
     N1: videos.filter(v => v.jlpt_level === 'N1'),
+    Mixed: videos.filter(v => !['N1', 'N2', 'N3', 'N4', 'N5'].includes(v.jlpt_level || '')),
   };
 
   return (
@@ -91,7 +93,7 @@ export default function VideosByLevel({ videos = [], isLoading }: VideosByLevelP
                   </Badge>
                   <h2 className="text-2xl font-bold text-slate-900">{levelNames[level]}</h2>
                 </div>
-                <Link to={`/Home?jlpt=${level}`} className="text-sm text-emerald-600 hover:text-emerald-700 flex items-center gap-1">
+                <Link to={`/home?jlpt=${level}`} className="text-sm text-emerald-600 hover:text-emerald-700 flex items-center gap-1">
                   Xem tất cả
                   <ChevronRight className="w-4 h-4" />
                 </Link>
