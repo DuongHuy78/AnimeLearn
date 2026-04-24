@@ -75,7 +75,7 @@ router.post('/login', async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: user._id, email: user.email, role: user.role},
+      { id: user._id, email: user.email, role: user.role },
       process.env.JWT_SECRET, // bắt buộc phải có env
       { expiresIn: '7d' }
     );
@@ -366,16 +366,16 @@ router.get('/profile-stats', authMiddleware, async (req, res) => {
     // Check if streak is lost
     const todayDate = new Date();
     todayDate.setHours(0, 0, 0, 0);
-    
+
     let currentStreak = user.dayStreak || 0;
-    
+
     if (user.lastActiveDate) {
       const lastActive = new Date(user.lastActiveDate);
       lastActive.setHours(0, 0, 0, 0);
-      
+
       const timeDiff = todayDate.getTime() - lastActive.getTime();
       const daysDiff = Math.round(timeDiff / (1000 * 60 * 60 * 24));
-      
+
       // If more than 1 day has passed, streak is broken
       if (daysDiff > 1 && currentStreak > 0) {
         currentStreak = 0;

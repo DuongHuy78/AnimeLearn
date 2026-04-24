@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Volume2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Định nghĩa kiểu dữ liệu cho một từ vựng trong Flashcard
@@ -14,9 +14,13 @@ export interface FlashcardWord {
   jlpt_level?: string;
   example_sentence?: string;
   example_meaning?: string;
+  audio_url?: string;
+  is_mastered?: boolean;
   ease_factor?: number;
   review_interval?: number;
   review_count?: number;
+  next_review_date?: string | Date;
+  tags?: string[];
 }
 
 // Định nghĩa Props truyền vào component
@@ -24,15 +28,6 @@ interface FlashCardProps {
   words: FlashcardWord[];
   onReview: (payload: { id: string | number; data: any }) => void;
 }
-
-const jlptColors: Record<string, string> = {
-  N5: 'bg-green-500/20 text-green-400',
-  N4: 'bg-blue-500/20 text-blue-400',
-  N3: 'bg-purple-500/20 text-purple-400',
-  N2: 'bg-orange-500/20 text-orange-400',
-  N1: 'bg-red-500/20 text-red-400',
-  Unknown: 'bg-gray-500/20 text-gray-400',
-};
 
 // Hàm tính toán Spaced Repetition
 function calculateNextReview(quality: number, easeFactor: number, interval: number) {
@@ -78,15 +73,27 @@ export default function FlashCard({ words, onReview }: FlashCardProps) {
     }
   };
 
+  const displayMeaning = word.meaning_en || word.meaning_vi || "Meaning not available";
+  const displayTags = word.tags || ["Noun", "Suru-Verb"]; // Mock tags if none exist
+
   return (
-    <div className="max-w-lg mx-auto">
-      <div className="text-center mb-6">
-        <span className="text-sm text-gray-500">{currentIdx + 1} / {words.length}</span>
+    <div className="max-w-2xl mx-auto w-full">
+      {/* Progress Bar */}
+      <div className="w-full max-w-md mx-auto mb-8">
+        <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden mb-2">
+          <div
+            className="h-full bg-[#4f46e5] rounded-full transition-all duration-300"
+            style={{ width: `${((currentIdx) / Math.max(words.length, 1)) * 100}%` }}
+          />
+        </div>
+        <div className="text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+          {currentIdx} / {words.length} cards completed
+        </div>
       </div>
 
       <div
         className="relative cursor-pointer mb-8"
-        onClick={() => setFlipped(!flipped)}
+        onClick={() => !flipped && setFlipped(true)}
       >
         <AnimatePresence mode="wait">
           <motion.div
@@ -95,87 +102,133 @@ export default function FlashCard({ words, onReview }: FlashCardProps) {
             animate={{ rotateY: 0, opacity: 1 }}
             exit={{ rotateY: -90, opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="min-h-70 rounded-3xl border border-[#1e1e3a] bg-[#12122a] flex flex-col items-center justify-center p-8"
+            className="min-h-[420px] rounded-[2rem] bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 flex flex-col items-center justify-center p-10 relative"
           >
+            {/* Volume Icon */}
+            <Volume2 className="w-7 h-7 text-[#005537] absolute top-8 right-8 hover:opacity-80 transition-opacity" onClick={(e) => e.stopPropagation()} />
+
             {!flipped ? (
+              // FRONT OF CARD
               <>
-                <p className="text-5xl font-bold text-white mb-4">{word.word}</p>
-                {word.reading && <p className="text-xl text-[#ff6b9d]">{word.reading}</p>}
-                {word.jlpt_level && (
-                  <Badge className={`mt-4 ${jlptColors[word.jlpt_level] || jlptColors.Unknown} border-0`}>
-                    {word.jlpt_level}
-                  </Badge>
+                {word.reading && (
+                  <span className="px-4 py-1 bg-blue-50 text-blue-600 font-bold rounded-full text-sm mb-6">
+                    {word.reading}
+                  </span>
                 )}
-                <p className="text-sm text-gray-600 mt-6">Nhấn để xem nghĩa</p>
+                <h2 className="text-7xl font-bold text-[#005537] mb-8">{word.word}</h2>
+                <p className="text-sm font-medium text-slate-400 mt-4 animate-pulse">Tap to flip</p>
               </>
             ) : (
+              // BACK OF CARD
               <>
-                <p className="text-2xl font-bold text-white mb-2">{word.word}</p>
-                <p className="text-lg text-[#ff6b9d] mb-4">{word.reading}</p>
-                <div className="w-12 h-px bg-[#1e1e3a] mb-4" />
-                <p className="text-xl text-gray-200 mb-2">{word.meaning_vi}</p>
-                <p className="text-gray-400 text-center">{word.meaning_en}</p>
-                {word.example_sentence && (
-                  <div className="mt-6 text-center">
-                    <p className="text-sm text-white">{word.example_sentence}</p>
-                    <p className="text-xs text-gray-500 mt-1">{word.example_meaning}</p>
-                  </div>
+                {word.reading && (
+                  <span className="px-4 py-1 bg-blue-50 text-blue-600 font-bold rounded-full text-sm mb-5">
+                    {word.reading}
+                  </span>
                 )}
+
+                <h2 className="text-6xl font-bold text-[#005537] mb-6">{word.word}</h2>
+
+                <div className="w-16 h-px bg-slate-200 mb-6" />
+
+                <h3 className="text-2xl font-bold text-slate-800 mb-4 text-center">
+                  {displayMeaning}
+                </h3>
+
+                {word.example_meaning && (
+                  <p className="text-slate-500 italic mb-2 text-center text-sm md:text-base">
+                    "{word.example_meaning}"
+                  </p>
+                )}
+
+                {word.example_sentence && (
+                  <p className="text-slate-600 font-medium mb-10 text-center text-sm md:text-base">
+                    {word.example_sentence}
+                  </p>
+                )}
+
+                <div className="flex gap-2 mt-auto">
+                  {displayTags.map((tag, i) => (
+                    <span key={i} className="px-4 py-1.5 bg-slate-100 text-slate-500 font-bold text-xs rounded-full">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
               </>
             )}
           </motion.div>
         </AnimatePresence>
       </div>
 
-      {flipped && (
-        <div className="grid grid-cols-4 gap-3">
-          <Button onClick={() => handleReview(1)} className="bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/30 h-auto py-2">
-            <div className="text-center">
-              <div className="font-semibold">Again</div>
-              <div className="text-xs opacity-70">1 ngày</div>
-            </div>
+      {/* Action Buttons Container */}
+      <div className="h-24 relative">
+        <AnimatePresence>
+          {flipped && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="grid grid-cols-4 gap-4 absolute w-full"
+            >
+              <button
+                onClick={(e) => { e.stopPropagation(); handleReview(1); }}
+                className="flex flex-col items-center justify-center py-4 bg-[#fff1f2] text-red-600 border border-red-100 rounded-2xl hover:bg-red-100 transition-colors"
+              >
+                <span className="font-bold text-base mb-1">Again</span>
+                <span className="text-sm font-medium opacity-80">&lt; 1m</span>
+              </button>
+
+              <button
+                onClick={(e) => { e.stopPropagation(); handleReview(2); }}
+                className="flex flex-col items-center justify-center py-4 bg-[#eff6ff] text-blue-600 border border-blue-200 rounded-2xl hover:bg-blue-100 transition-colors"
+              >
+                <span className="font-bold text-base mb-1">Hard</span>
+                <span className="text-sm font-medium opacity-80">{Math.round((word.review_interval || 1) * 1.2)}d</span>
+              </button>
+
+              <button
+                onClick={(e) => { e.stopPropagation(); handleReview(3); }}
+                className="flex flex-col items-center justify-center py-4 bg-[#ecfdf5] text-emerald-700 border border-emerald-100 rounded-2xl hover:bg-emerald-100 transition-colors"
+              >
+                <span className="font-bold text-base mb-1">Good</span>
+                <span className="text-sm font-medium opacity-80">{Math.round((word.review_interval || 1) * (word.ease_factor || 2.5))}d</span>
+              </button>
+
+              <button
+                onClick={(e) => { e.stopPropagation(); handleReview(4); }}
+                className="flex flex-col items-center justify-center py-4 bg-[#f0fdf4] text-[#005537] border border-[#dcfce7] rounded-2xl hover:bg-[#dcfce7] transition-colors"
+              >
+                <span className="font-bold text-base mb-1">Easy</span>
+                <span className="text-sm font-medium opacity-80">{Math.round((word.review_interval || 1) * (word.ease_factor || 2.5) * 1.3)}d</span>
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Navigation - keeping this subtle or hidden since the buttons handle progression */}
+      {!flipped && (
+        <div className="flex items-center justify-center gap-4 mt-8">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={(e) => { e.stopPropagation(); setCurrentIdx(Math.max(0, currentIdx - 1)); setFlipped(false); }}
+            disabled={currentIdx === 0}
+            className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full"
+          >
+            <ChevronLeft className="w-6 h-6" />
           </Button>
-          <Button onClick={() => handleReview(2)} className="bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 border border-orange-500/30 h-auto py-2">
-            <div className="text-center">
-              <div className="font-semibold">Hard</div>
-              <div className="text-xs opacity-70">{Math.round((word.review_interval || 1) * 1.2)}d</div>
-            </div>
-          </Button>
-          <Button onClick={() => handleReview(3)} className="bg-green-500/20 text-green-400 hover:bg-green-500/30 border border-green-500/30 h-auto py-2">
-            <div className="text-center">
-              <div className="font-semibold">Good</div>
-              <div className="text-xs opacity-70">{Math.round((word.review_interval || 1) * (word.ease_factor || 2.5))}d</div>
-            </div>
-          </Button>
-          <Button onClick={() => handleReview(4)} className="bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border border-blue-500/30 h-auto py-2">
-            <div className="text-center">
-              <div className="font-semibold">Easy</div>
-              <div className="text-xs opacity-70">{Math.round((word.review_interval || 1) * (word.ease_factor || 2.5) * 1.3)}d</div>
-            </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={(e) => { e.stopPropagation(); setCurrentIdx(Math.min(words.length - 1, currentIdx + 1)); setFlipped(false); }}
+            disabled={currentIdx === words.length - 1}
+            className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full"
+          >
+            <ChevronRight className="w-6 h-6" />
           </Button>
         </div>
       )}
-
-      <div className="flex items-center justify-center gap-4 mt-6">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => { setCurrentIdx(Math.max(0, currentIdx - 1)); setFlipped(false); }}
-          disabled={currentIdx === 0}
-          className="text-gray-400 hover:text-white"
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => { setCurrentIdx(Math.min(words.length - 1, currentIdx + 1)); setFlipped(false); }}
-          disabled={currentIdx === words.length - 1}
-          className="text-gray-400 hover:text-white"
-        >
-          <ChevronRight className="w-5 h-5" />
-        </Button>
-      </div>
     </div>
   );
 }

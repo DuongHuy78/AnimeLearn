@@ -40,7 +40,7 @@ export default function VocabularyPopup({ word, position, onClose, onSave, vocab
   const [lookupData, setLookupData] = useState<LookupData | null>(null);
   const [loading, setLoading] = useState(false);
   const popupRef = useRef<HTMLDivElement>(null);
-  
+
   // Trạng thái vị trí (bỏ opacity và animation)
   const [adjustedPos, setAdjustedPos] = useState({ x: -9999, y: -9999 });
 
@@ -111,14 +111,14 @@ export default function VocabularyPopup({ word, position, onClose, onSave, vocab
       });
       if (!res.ok) throw new Error();
       const data = await res.json();
-      
+
       setLookupData({
         word: data.word || w,
         reading: data.reading || 'chưa rõ',
         meaning_vi: data.meaning_vi || 'Không rõ nghĩa',
         part_of_speech: data.part_of_speech || 'N/A'
       });
-    } catch(e) {
+    } catch (e) {
       setLookupData({
         word: w,
         reading: 'chưa rõ',
@@ -170,7 +170,7 @@ export default function VocabularyPopup({ word, position, onClose, onSave, vocab
     if (!lookupData?.word && !word) return;
     const utterance = new SpeechSynthesisUtterance(lookupData?.word || word!);
     utterance.lang = 'ja-JP';
-    utterance.rate = 0.9; 
+    utterance.rate = 0.9;
     window.speechSynthesis.speak(utterance);
   };
 
@@ -194,22 +194,22 @@ export default function VocabularyPopup({ word, position, onClose, onSave, vocab
     <>
       {/* Nền trong suốt bắt sự kiện đóng khi click ra ngoài */}
       <div className="fixed inset-0 z-40 bg-transparent" onClick={onClose} />
-      
+
       <div
         ref={popupRef}
         // Loại bỏ hoàn toàn animation (transition, scale, transformOrigin)
         className="fixed z-50 shadow-2xl rounded-3xl overflow-hidden flex flex-col w-[320px] max-h-[420px] border border-pink-100"
-        style={{ 
-          left: adjustedPos.x, 
+        style={{
+          left: adjustedPos.x,
           top: adjustedPos.y,
           // Ẩn tạm thời trong mili-giây đầu tiên lúc React đang tính toán tọa độ để tránh giật
-          visibility: adjustedPos.x === -9999 ? 'hidden' : 'visible' 
+          visibility: adjustedPos.x === -9999 ? 'hidden' : 'visible'
         }}
       >
-        
+
         {/* NÚT TẮT */}
-        <button 
-          onClick={onClose} 
+        <button
+          onClick={onClose}
           className="absolute top-4 right-4 p-1.5 text-pink-300 hover:text-pink-600 hover:bg-pink-100/50 rounded-full z-10"
         >
           <X className="w-5 h-5" />
@@ -280,7 +280,7 @@ export default function VocabularyPopup({ word, position, onClose, onSave, vocab
                   <span className="text-sm">Chưa có định nghĩa chi tiết.</span>
                 </div>
               )}
-              
+
               {lookupData.meaning_en && (
                 <p className="text-slate-500 text-sm mt-4 pt-3 border-t border-pink-50 font-medium italic">
                   {lookupData.meaning_en}

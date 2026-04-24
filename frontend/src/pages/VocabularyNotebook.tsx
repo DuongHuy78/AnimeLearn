@@ -74,20 +74,20 @@ export default function VocabularyNotebook() {
 
   // Filter vocabulary
   const filteredVocab = vocabulary.filter((v: VocabItem) => {
-    const matchSearch = !searchQuery || 
+    const matchSearch = !searchQuery ||
       v.word?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       v.reading?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       v.meaning_vi?.toLowerCase().includes(searchQuery.toLowerCase());
-    
+
     const matchLevel = filterLevel === 'all' || v.jlpt_level === filterLevel;
-    
+
     return matchSearch && matchLevel;
   });
 
   // Export to Anki format (TSV)
   const exportToAnki = () => {
     if (filteredVocab.length === 0) return toast.error("Không có dữ liệu để xuất");
-    
+
     const ankiData = filteredVocab.map((v: VocabItem) => {
       const front = `${v.word || ''}<br><span style="color:gray">${v.reading || ''}</span>`;
       const back = `${v.meaning_vi || ''}<br><span style="color:gray">${v.meaning_en || ''}</span><br><br>${v.example_sentence || ''}<br><span style="color:gray">${v.example_meaning || ''}</span>`;
@@ -239,7 +239,7 @@ export default function VocabularyNotebook() {
                   </div>
                   <p className="text-slate-700 font-medium">{v.meaning_vi}</p>
                   <p className="text-slate-500 text-sm mb-4">{v.meaning_en}</p>
-                  
+
                   {v.example_sentence && (
                     <div className="pl-4 border-l-3 border-emerald-100 bg-slate-50/50 py-2 pr-2 rounded-r-lg">
                       <p className="text-sm text-slate-800 leading-relaxed">{v.example_sentence}</p>

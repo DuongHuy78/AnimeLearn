@@ -5,7 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 // 1. Khai báo cấu trúc dữ liệu cho một từ vựng
 export interface VocabItem {
-  id: string | number;
+  id: string;
   word: string;
   reading?: string;
   jlpt_level?: string;
@@ -13,6 +13,10 @@ export interface VocabItem {
   meaning_en?: string;
   example_sentence?: string;
   example_meaning?: string;
+  audio_url?: string;
+  tags?: string[];
+  is_mastered?: boolean;
+  next_review_date?: string;
 }
 
 // 2. Khai báo Props cho component

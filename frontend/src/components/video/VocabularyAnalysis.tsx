@@ -14,7 +14,7 @@ export interface VocabItem {
 interface VocabularyAnalysisProps {
   vocabulary: VocabItem[];
   // THÊM PROP NÀY ĐỂ KÍCH HOẠT MODAL Ở SCRIPT PANEL
-  onWordClick?: (vocab: any) => void; 
+  onWordClick?: (vocab: any) => void;
 }
 
 // --- Các hàm tiện ích xử lý Cookie ---
@@ -74,7 +74,7 @@ export default function VocabularyAnalysis({ vocabulary, onWordClick }: Vocabula
 
       // 3. Xử lý lưu vào Cookie
       const currentSavedList = getSavedVocabFromCookie();
-      
+
       // Kiểm tra xem từ này đã được lưu trước đó chưa
       const isAlreadySaved = currentSavedList.some((item: any) => item.word === newSavedVocab.word);
 
@@ -102,8 +102,8 @@ export default function VocabularyAnalysis({ vocabulary, onWordClick }: Vocabula
       <p className="text-xs text-slate-500 font-medium">Từ vựng trong câu:</p>
       <div className="space-y-2">
         {vocabulary.map((v, idx) => (
-          <div 
-            key={idx} 
+          <div
+            key={idx}
             // THÊM HIỆU ỨNG CLICK VÀ GỌI HÀM onWordClick Ở ĐÂY
             onClick={() => onWordClick && onWordClick(v)}
             className="flex items-center justify-between gap-2 p-2 rounded-lg bg-emerald-50 border border-emerald-200 cursor-pointer hover:bg-emerald-100/60 transition-colors"

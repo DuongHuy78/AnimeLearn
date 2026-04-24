@@ -210,8 +210,8 @@ router.post('/save-word', authMiddleware, async (req, res) => {
 
 router.post('/save', authMiddleware, async (req, res) => {
   try {
-  console.log("\nĐã tới router save\n");    
-  const { title, youtube_url, jlpt_level, script } = req.body;
+    console.log("\nĐã tới router save\n");
+    const { title, youtube_url, jlpt_level, script } = req.body;
 
     const ytMatch = youtube_url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?\s]+)/);
     const ytId = ytMatch ? ytMatch[1] : null;
@@ -266,7 +266,7 @@ router.get('/detail/:id', authMiddleware, async (req, res) => {
     }
 
 
-    
+
 
     // Tạo data tương thích với frontend load từ local storage
     res.json({
@@ -290,9 +290,9 @@ router.get('/user/my-videos', authMiddleware, async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 5;
     const skip = (page - 1) * limit;
-    
+
     const total = await Video.countDocuments({ creator: currentUserId });
-    
+
     const videos = await Video.find({ creator: currentUserId })
       .select('_id title thumbnail_url jlpt_level views_count status visibility created_date')
       .sort({ created_date: -1 })
