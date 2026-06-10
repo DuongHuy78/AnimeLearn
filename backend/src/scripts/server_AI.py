@@ -95,6 +95,7 @@ def extract_media_title(media_path: str) -> str:
                 'quiet': True,
                 'no_warnings': True,
                 'noplaylist': True,
+                'extractor_args': {'youtube': {'player_client': ['android', 'web']}}
             }
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(media_path, download=False)

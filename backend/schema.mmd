@@ -1,0 +1,275 @@
+erDiagram
+  Achievement {
+    string name
+    string type
+    string required
+    string description
+    string type
+    string default
+    string icon
+    string type
+    string required
+    string unlockCondition
+    string type
+    string required
+    string createdAt
+    date type
+    date default
+  }
+
+  Dictionary {
+    string word
+    string reading
+    string pos
+    array meanings
+    string popularity_score
+    number type
+    string default
+    string index
+  }
+
+  Exam {
+    string label
+    string text
+    string imageUrl
+  }
+
+  Folder {
+    string user
+    ObjectId type
+    string ref
+    string required
+    string index
+    string name
+    string type
+    string required
+    string trim
+    string maxlength
+    string description
+    string type
+    string trim
+    string maxlength
+    string default
+    string color
+    string type
+    string default
+  }
+
+  Genre {
+    string name
+    string description
+    string slug
+  }
+
+  Kanji {
+    string kanji
+    string mean
+    string kun
+    string on
+    number level
+    number stroke_count
+    string detail
+    array compDetail
+    array examples
+    string img
+    number freq
+  }
+
+  Label {
+    string name_level
+    string color_hex
+  }
+
+  LearningActivity {
+  }
+
+  Quiz {
+    string timestamp
+    string type
+    string type
+    string required
+    string enum
+    string questionText
+    string options
+    array type
+    string required
+    string validate
+    string validator
+    string message
+    string correctAnswerIndex
+    number type
+    string required
+    string min
+    string max
+    string validate
+    number validator
+    string message
+    string explanation
+  }
+
+  Script {
+    ObjectId video_id
+    string line_jp
+    string line_vn
+    array line_furigana
+    string text
+    string furigana
+    number start_time
+    number end_time
+  }
+
+  User {
+  }
+
+  UserAchievement {
+  }
+
+  Video {
+    string title
+    string type
+    string required
+    string youtube_url
+    string type
+    string required
+    string thumbnail_url
+    string type
+    string default
+    string jlpt_level
+    string type
+    string default
+    string script
+    array type
+    string required
+    array vocab_list
+    string word
+    string reading
+    string meaning
+    string pos
+    array kanji_info
+    string creator
+    ObjectId type
+    string ref
+    string required
+    string views_count
+    number type
+    string default
+    string likes_count
+    number type
+    string default
+    string status
+    string type
+    string enum
+    string default
+    string visibility
+    string type
+    string enum
+    string default
+    string created_date
+    date type
+    date default
+    string duration
+    number type
+    string default
+    string video_theme
+    string type
+    string default
+    string trim
+  }
+
+  VideoComment {
+  }
+
+  VideoLike {
+  }
+
+  VideoWatched {
+  }
+
+  Vocabulary {
+    string user
+    ObjectId type
+    string ref
+    string required
+    string index
+    string folderId
+    ObjectId type
+    string ref
+    string default
+    string index
+    string item_type
+    string type
+    string enum
+    string default
+    string index
+    string word
+    string type
+    string required
+    string trim
+    string index
+    string reading
+    string type
+    string meaning_vi
+    string type
+    string meaning_en
+    string type
+    string part_of_speech
+    string type
+    string jlpt_level
+    string type
+    string default
+    string popularity_score
+    number type
+    string default
+    string index
+    string on
+    string type
+    string kun
+    string type
+    string mean
+    string type
+    string stroke_count
+    number type
+    string freq
+    number type
+    string index
+    string detail
+    string type
+    string img
+    string type
+    string example_sentence
+    string type
+    string example_meaning
+    string type
+    string next_review_date
+    date type
+    date default
+    string index
+    string review_interval
+    number type
+    string default
+    string ease_factor
+    number type
+    string default
+    string review_count
+    number type
+    string default
+    string review_date
+    date type
+    date default
+    string next_review_date
+    date type
+    date default
+    string review_interval
+    number type
+    string default
+    string ease_factor
+    number type
+    string default
+    string review_count
+    number type
+    string default
+    string saved_at
+    date type
+    date default
+  }
+

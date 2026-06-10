@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { Bot, Loader2, MessageCircle, Minus, RefreshCw, Send, X } from 'lucide-react';
+import { motion, type PanInfo } from 'framer-motion';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,6 +42,7 @@ function toHistory(messages: ChatMessage[]) {
 
 export default function VideoRagChatWidget({ videoId, bottomOffsetClassName = 'bottom-4 md:bottom-6' }: VideoRagChatWidgetProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [side, setSide] = useState<'left' | 'right'>('right');
   const [isSending, setIsSending] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [messageInput, setMessageInput] = useState('');
@@ -54,6 +56,7 @@ export default function VideoRagChatWidget({ videoId, bottomOffsetClassName = 'b
   ]);
 
   const messageBoxRef = useRef<HTMLDivElement | null>(null);
+  const isDraggingRef = useRef(false);
 
   const canSend = useMemo(
     () => Boolean(videoId && messageInput.trim() && !isSending),
@@ -136,19 +139,47 @@ export default function VideoRagChatWidget({ videoId, bottomOffsetClassName = 'b
   
 
   return (
-    <div className={`fixed right-4 ${bottomOffsetClassName} md:right-6 z-50`}>
+    <motion.div 
+      layout
+      className={cn(
+        "fixed z-50",
+        bottomOffsetClassName,
+        side === 'right' ? "right-4 md:right-6" : "left-4 md:left-6"
+      )}
+    >
       {!isOpen ? (
-        <button
+        <motion.button
+          layout
+          drag
+          dragSnapToOrigin
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onDragStart={() => {
+            isDraggingRef.current = true;
+          }}
+          onDragEnd={(_, info: PanInfo) => {
+            const isLeft = info.point.x < window.innerWidth / 2;
+            setSide(isLeft ? 'left' : 'right');
+            setTimeout(() => {
+              isDraggingRef.current = false;
+            }, 100);
+          }}
           type="button"
-          onClick={() => setIsOpen(true)}
-          className="size-14 rounded-full shadow-xl text-white bg-linear-to-br from-red-500 via-orange-500 to-rose-600 hover:scale-105 transition-transform flex items-center justify-center border border-white/40"
+          onClick={() => {
+            if (isDraggingRef.current) return;
+            setIsOpen(true);
+          }}
+          className="size-14 rounded-full shadow-xl text-white bg-linear-to-br from-green-500 via-emerald-500 to-green-600 flex items-center justify-center border border-white/40 cursor-grab active:cursor-grabbing"
           aria-label="Mở chat RAG"
         >
           <MessageCircle className="size-6" />
-        </button>
+        </motion.button>
       ) : (
-        <div className="w-[min(92vw,360px)] h-[500px] rounded-3xl border border-slate-200 bg-white shadow-2xl overflow-hidden flex flex-col">
-          <div className="px-4 py-3 bg-linear-to-r from-slate-900 via-rose-900 to-slate-900 text-white flex items-center justify-between">
+        <motion.div 
+          layout
+          className="w-[min(92vw,360px)] h-[500px] rounded-3xl border border-slate-200 bg-white shadow-2xl overflow-hidden flex flex-col"
+        >
+          <div className="px-4 py-3 bg-linear-to-r from-green-800 via-emerald-700 to-green-800 text-white flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="size-8 rounded-xl bg-white/10 flex items-center justify-center">
                 <Bot className="size-4" />
@@ -258,8 +289,8 @@ export default function VideoRagChatWidget({ videoId, bottomOffsetClassName = 'b
               </Button>
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
-    </div>
+    </motion.div>
   );
 }
