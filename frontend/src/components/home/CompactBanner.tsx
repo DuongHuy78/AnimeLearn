@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Upload, ArrowRight, Youtube, PlayCircle, BookOpen, TrendingUp, Shield } from 'lucide-react';
+import { ArrowRight, Youtube, PlayCircle, BookOpen, TrendingUp, Shield } from 'lucide-react';
 import animeLogo from '@/assets/demon_slayer.gif';
 import { authApi } from '@/api/auth.api';
 

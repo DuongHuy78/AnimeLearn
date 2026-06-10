@@ -10,7 +10,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { 
   Loader2, Sparkles, Share2, Youtube, Mic, Brain, Eye, 
   EyeOff, Heart, AlertTriangle, BrainCircuit, PlayCircle, X, BookOpen, Mic2,
-  MessageSquare, ThumbsUp, MoreVertical, Pencil, Trash2
+  MessageSquare, ThumbsUp, MoreVertical, Pencil, Trash2, Clock, CheckCircle2, XCircle
 } from 'lucide-react'; 
 import { toast } from 'sonner';
 
@@ -78,6 +78,8 @@ interface VideoCommentItem {
 
 interface QuizQuestion {
   timestamp: string;
+  startTimeSeconds?: number;
+  endTimeSeconds?: number;
   type: string;
   questionText: string;
   options: string[];
@@ -160,12 +162,32 @@ const formatFullDateTime = (value?: string) => {
   }).format(new Date(value));
 };
 
+const getQuizQuestionStart = (question: QuizQuestion) => (
+  typeof question.startTimeSeconds === 'number'
+    ? question.startTimeSeconds
+    : parseTimestampToSeconds(question.timestamp)
+);
+
+const getQuizQuestionEnd = (question: QuizQuestion) => {
+  const start = getQuizQuestionStart(question);
+  if (typeof question.endTimeSeconds === 'number' && question.endTimeSeconds > start) {
+    return question.endTimeSeconds;
+  }
+  return start + 6;
+};
+
+const getQuizQuestionKey = (question: QuizQuestion) => (
+  `${getQuizQuestionStart(question)}-${getQuizQuestionEnd(question)}-${question.questionText}`
+);
+
 
 
 // Component Modal Pop-up Quiz
 function PopupQuizModal({ question, onClose, onResume }: { question: QuizQuestion; onClose: () => void; onResume: () => void; }) {
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [showResult, setShowResult] = useState(false);
+  const start = getQuizQuestionStart(question);
+  const end = getQuizQuestionEnd(question);
 
   const handleAnswer = (index: number) => {
     setSelectedOption(index);
@@ -173,55 +195,95 @@ function PopupQuizModal({ question, onClose, onResume }: { question: QuizQuestio
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-3xl p-6 md:p-8 max-w-xl w-full shadow-2xl animate-in zoom-in-95 duration-200">
-        <div className="flex justify-between items-center mb-6">
-          <Badge className="bg-violet-100 text-violet-700 border-0 px-3 py-1 text-xs uppercase tracking-wider font-bold">Kiểm tra nhanh</Badge>
-          <button onClick={onClose} className="text-slate-400 hover:text-rose-500 transition-colors p-1"><X className="w-6 h-6" /></button>
-        </div>
-
-        <h3 className="text-xl font-bold text-slate-900 mb-6 leading-relaxed" dangerouslySetInnerHTML={{ __html: question.questionText }} />
-
-        <div className="space-y-3">
-          {question.options.map((opt, i) => {
-            const isCorrect = i === question.correctAnswerIndex;
-            const isSelected = i === selectedOption;
-
-            return (
-              <button
-                key={i}
-                onClick={() => !showResult && handleAnswer(i)}
-                disabled={showResult}
-                className={`w-full text-left p-4 rounded-2xl border-2 transition-all duration-200 ${
-                  showResult ? isCorrect ? 'border-emerald-500 bg-emerald-50 text-emerald-800' : isSelected ? 'border-rose-400 bg-rose-50 text-rose-800' : 'border-slate-100 bg-slate-50 opacity-50 text-slate-500'
-                    : 'border-slate-200 hover:border-violet-400 hover:bg-violet-50 text-slate-700'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <span className={`w-7 h-7 rounded-md flex items-center justify-center text-sm font-bold shrink-0 ${
-                    showResult && isCorrect ? 'bg-emerald-500 text-white' : showResult && isSelected ? 'bg-rose-500 text-white' : 'bg-slate-100 text-slate-500'
-                  }`}>
-                    {String.fromCharCode(65 + i)}
-                  </span>
-                  <span className="font-medium text-base">{opt}</span>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-
-        {showResult && (
-          <div className="mt-6 p-4 rounded-xl bg-violet-50 border border-violet-100 text-sm text-slate-700 animate-in slide-in-from-bottom-4">
-            <span className="font-bold text-violet-700 block mb-1">💡 Giải thích:</span>
-            {question.explanation}
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/65 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-2xl overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl animate-in zoom-in-95 duration-200">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-200 bg-slate-50 px-5 py-4">
+          <div className="min-w-0">
+            <Badge className="mb-2 rounded-md border-0 bg-emerald-100 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-emerald-800">
+              Kiểm tra nhanh
+            </Badge>
+            <div className="flex items-center gap-2 text-sm font-semibold text-slate-600">
+              <Clock className="h-4 w-4 text-emerald-600" />
+              <span className="font-mono">{formatShortDuration(start)} - {formatShortDuration(end)}</span>
+            </div>
           </div>
-        )}
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-white hover:text-rose-600"
+            aria-label="Đóng quiz"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
 
-        {showResult && (
-          <Button onClick={onResume} className="mt-6 w-full bg-slate-900 hover:bg-slate-800 text-white h-12 rounded-xl text-base font-semibold">
-            Tiếp tục xem video <PlayCircle className="w-5 h-5 ml-2" />
-          </Button>
-        )}
+        <div className="p-5 md:p-6">
+          <h3 className="mb-5 break-words text-xl font-bold leading-8 text-slate-950" dangerouslySetInnerHTML={{ __html: question.questionText }} />
+
+          <div className="grid gap-3">
+            {question.options.map((opt, i) => {
+              const isCorrect = i === question.correctAnswerIndex;
+              const isSelected = i === selectedOption;
+
+              return (
+                <button
+                  key={`${opt}-${i}`}
+                  type="button"
+                  onClick={() => !showResult && handleAnswer(i)}
+                  disabled={showResult}
+                  className={`w-full rounded-lg border p-4 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
+                    showResult
+                      ? isCorrect
+                        ? 'border-emerald-500 bg-emerald-50 text-emerald-900'
+                        : isSelected
+                          ? 'border-rose-400 bg-rose-50 text-rose-900'
+                          : 'border-slate-200 bg-slate-50 text-slate-500'
+                      : 'border-slate-200 bg-white text-slate-800 hover:border-emerald-300 hover:bg-emerald-50/60'
+                  }`}
+                >
+                  <span className="flex items-start gap-3">
+                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-black ${
+                      showResult && isCorrect
+                        ? 'bg-emerald-600 text-white'
+                        : showResult && isSelected
+                          ? 'bg-rose-600 text-white'
+                          : 'bg-slate-100 text-slate-600'
+                    }`}>
+                      {String.fromCharCode(65 + i)}
+                    </span>
+                    <span className="min-w-0 flex-1 break-words text-base font-semibold leading-7">{opt}</span>
+                    {showResult && isCorrect && <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />}
+                    {showResult && isSelected && !isCorrect && <XCircle className="h-5 w-5 shrink-0 text-rose-600" />}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {showResult && (
+            <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-slate-800 animate-in slide-in-from-bottom-3">
+              <span className="mb-1 flex items-center gap-2 font-bold text-amber-800">
+                <Sparkles className="h-4 w-4" />
+                Giải thích
+              </span>
+              {question.explanation}
+            </div>
+          )}
+
+          <div className="mt-6 flex flex-col-reverse gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
+            <Button onClick={onClose} variant="outline" className="h-11 rounded-lg border-slate-300 bg-white font-bold">
+              Đóng
+            </Button>
+            <Button
+              onClick={onResume}
+              disabled={!showResult}
+              className="h-11 rounded-lg bg-slate-900 px-5 font-bold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Tiếp tục xem
+              <PlayCircle className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -796,14 +858,15 @@ export default function VideoWorkspace() {
 
           if (enablePopupQuiz && existingQuiz && !activePopupQuestion) {
             const popQuestion = existingQuiz.questions.find(q => {
-              const triggerTime = parseTimestampToSeconds(q.timestamp) + 6;
-              return currentTime >= triggerTime && currentTime <= triggerTime + 0.5;
+              const triggerTime = getQuizQuestionEnd(q);
+              return currentTime >= triggerTime && currentTime <= triggerTime + 1.25;
             });
-            if (popQuestion && !shownPopups.has(popQuestion.timestamp)) {
+            const popupKey = popQuestion ? getQuizQuestionKey(popQuestion) : '';
+            if (popQuestion && !shownPopups.has(popupKey)) {
               playerRef.current.pauseVideo();
               setIsPlaying(false);
               setActivePopupQuestion(popQuestion);
-              setShownPopups(prev => new Set(prev).add(popQuestion.timestamp));
+              setShownPopups(prev => new Set(prev).add(popupKey));
             }
           }
 
@@ -1844,8 +1907,8 @@ export default function VideoWorkspace() {
         </TabsContent>
 
         <TabsContent value="quiz" className="flex-1 m-0 p-0 outline-hidden">
-          <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden h-full min-h-[500px]">
-            <QuizPage videoId={videoId} script={script} ytId={ytId} onJumpToTime={jumpToLine} />
+          <div className="h-full min-h-[620px] overflow-hidden">
+            <QuizPage videoId={videoId} script={script} ytId={ytId} />
           </div>
         </TabsContent>
       </Tabs>
