@@ -20,11 +20,7 @@ import {
   translateWordService,
   updateVideoCommentService,
   updateVideoService,
-  analyzeVideoScriptService,
-  saveVideoWithQuizService,
-  translateWordService,
-  saveWordService,
-  convertFuriganaService,
+
 } from '../services/videoService.js';
 
 const getCurrentUserId = (req) => req.user?.id || req.user?.userId;
