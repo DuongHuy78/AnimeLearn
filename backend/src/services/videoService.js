@@ -804,7 +804,9 @@ export const saveVideoWithQuizService = async (userId, youtube_url, script) => {
 
   let aiResult = null;
   try {
-    aiResult = await generateQuizFromScript(script); 
+    aiResult = await generateQuizFromScript(script, {
+      durationSeconds: realDurationSeconds || 0,
+    }); 
   } catch (aiError) {
     console.warn("⚠️ [Auto-AI] Gemini API đang quá tải hoặc lỗi. Bỏ qua tạo Quiz:", aiError.message);
   }

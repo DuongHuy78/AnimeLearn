@@ -3,7 +3,7 @@ import { normalizeQuestionGroup, normalizeQuestionGroups } from './examService.j
 function getGeminiConfig() {
   return {
     apiKey: process.env.GEMINI_API_KEY,
-    model: process.env.GEMINI_EXAM_MODEL || process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+    model: process.env.GEMINI_EXAM_MODEL || process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite',
   };
 }
 
