@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { ApiError } from '@/api/client';
 import { videoApi } from '@/api/video.api';
+import { KanjiStrokeDiagram } from '@/components/kanji/KanjiStrokeDiagram';
 import { LearningSaveModal } from '@/components/vocabulary-hub/LearningSaveModal';
 import type { FlashcardItem } from '@/components/vocabulary-hub/types';
 
@@ -56,6 +57,7 @@ export default function VocabularyTab({ vocabList }: VocabularyTabProps) {
       stroke_count: Number(kanji.stroke_count) || undefined,
       detail: kanji.detail || '',
       freq: Number(kanji.freq) || undefined,
+      img: kanji.img || '',
     };
   };
 
@@ -225,6 +227,19 @@ export default function VocabularyTab({ vocabList }: VocabularyTabProps) {
                   </div>
 
                   <div className="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-8">
+                    <div className="mb-8 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                      <p className="mb-4 text-xs font-bold uppercase tracking-widest text-pink-400">
+                        Minh họa nét viết
+                      </p>
+
+                      <KanjiStrokeDiagram
+                        svg={selectedKanji.img}
+                        kanji={selectedKanji.kanji}
+                        showFallback
+                        className="mx-auto max-w-[260px] dark:border-slate-700"
+                      />
+                    </div>
+
                     {/* Kun/On */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                       <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm dark:border-slate-800 dark:bg-slate-900">

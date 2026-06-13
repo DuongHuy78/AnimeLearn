@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { KanjiStrokeDiagram } from '@/components/kanji/KanjiStrokeDiagram';
 import { cn } from '@/lib/utils';
 import { getItemMeaning, getTone, parseMeaning } from './display';
 import type { FlashcardItem } from './types';
@@ -121,6 +122,15 @@ export function VocabInfoModal({ item, readOnly, onClose, onSave, onDelete }: Vo
 
               {isKanji ? (
                 <>
+                  <InfoSection title="Nét viết" accent="rose">
+                    <KanjiStrokeDiagram
+                      svg={item.img}
+                      kanji={item.word}
+                      showFallback
+                      className="mx-auto max-w-[240px]"
+                    />
+                  </InfoSection>
+
                   <InfoSection title="Âm đọc" accent="rose">
                     <div className="grid gap-3">
                       <FactRow label="Onyomi" value={item.on || '-'} icon={<Languages className="h-4 w-4" />} />

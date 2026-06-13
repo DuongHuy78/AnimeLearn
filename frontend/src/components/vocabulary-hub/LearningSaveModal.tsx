@@ -75,6 +75,7 @@ export function LearningSaveModal({ item, onClose, onSaved }: LearningSaveModalP
         stroke_count: item.stroke_count,
         freq: item.freq,
         detail: item.detail,
+        img: item.img,
         example_sentence: item.example_sentence,
         example_meaning: item.example_meaning,
       });

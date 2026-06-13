@@ -95,6 +95,7 @@ export interface SaveLearningItemPayload {
   stroke_count?: number;
   freq?: number;
   detail?: string;
+  img?: string;
   example_sentence?: string;
   example_meaning?: string;
 }

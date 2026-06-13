@@ -8,6 +8,7 @@ import WordDetail from '@/components/dictionary/WordDetail';
 import type { WordData, KanjiInfo } from '@/components/dictionary/types';
 import { dictionaryApi } from '@/api/dictionary.api';
 import { kanjiApi } from '@/api/kanji.api';
+import { KanjiStrokeDiagram } from '@/components/kanji/KanjiStrokeDiagram';
 import { LearningSaveModal } from '@/components/vocabulary-hub/LearningSaveModal';
 import type { FlashcardItem } from '@/components/vocabulary-hub/types';
 
@@ -42,6 +43,7 @@ const kanjiInfoToFlashcard = (kanji: KanjiInfo): FlashcardItem => {
     jlpt_level: level ? `N${level}` : undefined,
     stroke_count: Number(kanji.stroke_count) || undefined,
     detail: kanji.detail,
+    img: kanji.img,
   };
 };
 
@@ -341,6 +343,19 @@ export default function DictionaryPage() {
                   </Badge>
                 </div>
               </div>
+            </div>
+
+            <div className="mb-8 rounded-2xl border border-slate-100 bg-slate-50 p-5">
+              <p className="mb-4 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                Minh họa nét viết
+              </p>
+
+              <KanjiStrokeDiagram
+                svg={selectedKanji.img}
+                kanji={selectedKanji.kanji}
+                showFallback
+                className="mx-auto max-w-[260px]"
+              />
             </div>
 
             <div className="mb-8 grid grid-cols-2 gap-4">
