@@ -1,13 +1,12 @@
 import express from 'express';
-import { getQuizByVideoId, generateQuizForVideo } from '../controllers/quizController.js';
-import { authMiddleware } from '../middleware/auth.js'; // Nhớ check auth để tránh spam API
+import { getQuizByVideoId } from '../controllers/quizController.js';
+import { authMiddleware } from '../middleware/auth.js';
 import Quiz from '../models/Quiz.js';
-import Video from '../models/Video.js'; // Để cập nhật JLPT level vào Video sau khi AI trả về
+import Video from '../models/Video.js';
 import { generateQuizFromScript } from '../services/quizAIService.js';
 
 const router = express.Router();
 
-// GET /api/quiz/:videoId - Lấy quiz đã tồn tại
 router.get('/:videoId', authMiddleware, getQuizByVideoId);
 
 router.post('/:videoId/generate', authMiddleware, async (req, res) => {
@@ -15,27 +14,41 @@ router.post('/:videoId/generate', authMiddleware, async (req, res) => {
         const { videoId } = req.params;
         const { script } = req.body;
 
-        // 1. Gọi AI xử lý 1 chạm
-        const aiResult = await generateQuizFromScript(script);
+        const video = await Video.findById(videoId).select('duration script').lean();
+        if (!video) {
+            return res.status(404).json({ error: 'Khong tim thay video' });
+        }
 
-        // 2. Lưu bộ câu hỏi vào Database Quiz
+        const sourceScript = Array.isArray(script) && script.length > 0 ? script : video.script;
+        if (!Array.isArray(sourceScript) || sourceScript.length === 0) {
+            return res.status(400).json({ error: 'Video chua co script de tao quiz' });
+        }
+
+        const existingQuiz = await Quiz.findOne({ videoId });
+        if (existingQuiz) {
+            return res.json({ message: 'Quiz da ton tai', quiz: existingQuiz });
+        }
+
+        const aiResult = await generateQuizFromScript(sourceScript, {
+            durationSeconds: video.duration || 0,
+        });
+
         const newQuiz = new Quiz({
-            videoId: videoId,
-            questions: aiResult.questions
+            videoId,
+            questions: aiResult.questions,
         });
         await newQuiz.save();
 
-        // 3. CẬP NHẬT JLPT LEVEL VÀO VIDEO (Lưu ý mấu chốt ở đây)
-        if (aiResult.jlptLevel) {
-            await Video.findByIdAndUpdate(videoId, { 
-                jlpt_level: aiResult.jlptLevel 
+        if (aiResult.jlptLevel && aiResult.jlptLevel !== 'Unknown') {
+            await Video.findByIdAndUpdate(videoId, {
+                jlpt_level: aiResult.jlptLevel,
             });
         }
 
-        res.json({ message: 'Tạo Quiz thành công', quiz: newQuiz, jlptLevel: aiResult.jlptLevel });
+        res.json({ message: 'Tao Quiz thanh cong', quiz: newQuiz, jlptLevel: aiResult.jlptLevel });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ error: 'Lỗi khi AI tạo quiz' });
+        res.status(500).json({ error: 'Loi khi AI tao quiz' });
     }
 });
 

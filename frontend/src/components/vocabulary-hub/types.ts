@@ -41,6 +41,7 @@ export interface FlashcardItem {
   stroke_count?: number;
   freq?: number;
   detail?: string;
+  img?: string;
   example_sentence?: string;
   example_meaning?: string;
   next_review_date?: string;

@@ -25,10 +25,6 @@ import Vocabulary from './src/models/Vocabulary.js';
 dotenv.config({ path: '.env' });
 dotenv.config();
 
-Video.syncIndexes()
-  .then(() => console.log('✅ Đã tạo Index thành công, từ nay khỏi lo tràn RAM!'))
-  .catch(err => console.log('Lỗi tạo Index:', err));
-
 const app = express();
 const PORT = process.env.PORT || 5000;
 const CLIENT_ORIGINS = (process.env.CLIENT_ORIGINS || 'http://localhost:5173,http://localhost:3000,http://172.16.3.103:5173')
@@ -36,6 +32,15 @@ const CLIENT_ORIGINS = (process.env.CLIENT_ORIGINS || 'http://localhost:5173,htt
   .map(origin => origin.trim())
   .filter(Boolean);
 const BAN_SWEEP_INTERVAL_MS = 5 * 60 * 1000; // cứ cách 5p kiểm tra để tự động gở ban
+
+const reconcileVideoIndexes = async () => {
+  try {
+    await Video.syncIndexes();
+    console.log('[VideoIndexes] Indexes are ready');
+  } catch (error) {
+    console.error('[VideoIndexes] Could not reconcile indexes:', error.message || error);
+  }
+};
 
 const reconcileVocabularyIndexes = async () => {
   try {
@@ -105,6 +110,7 @@ mongoose.connect(process.env.MONGO_URI)
   .then(async () => {
     console.log('✅ Connected to MongoDB successfully');
 
+    await reconcileVideoIndexes();
     await reconcileVocabularyIndexes();
 
     void sweepExpiredBans();
@@ -127,16 +133,6 @@ mongoose.connect(process.env.MONGO_URI)
   .catch((error) => {
     console.error('❌ Error connecting to MongoDB:', error.message);
   });
-
-mongoose.connection.once('open', async () => {
-  try {
-    // Đi cửa sau: Can thiệp thẳng vào collection 'videos' để tạo Index mà không cần Import Model
-    await mongoose.connection.db.collection('videos').createIndex({ created_date: -1 });
-    console.log('✅ ĐÃ TẠO INDEX XẾP HẠNG THÀNH CÔNG! Vĩnh biệt lỗi 32MB RAM!');
-  } catch (err) {
-    console.error('❌ Lỗi khi tạo Index:', err);
-  }
-});
 
 // Routes
 app.use('/api/auth', authRoutes);

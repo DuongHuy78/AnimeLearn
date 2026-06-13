@@ -59,7 +59,7 @@ function normalizeUtf8Value(value) {
 }
 
 function parseYouTubeDuration(durationStr) {
-  const match = durationStr.match(/PT(d+H)?(d+M)?(d+S)?/);
+  const match = durationStr.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
   if (!match) return 0;
   const hours = (parseInt(match[1]) || 0);
   const minutes = (parseInt(match[2]) || 0);
@@ -642,6 +642,7 @@ export const getPublicVideosService = async ({ level, search, page = 1, limit = 
 
 
 export const analyzeVideoScriptService = async (url) => {
+  console.log("đã gọi serveice video analyze");
   const response = await fetch(`${AI_SERVICE}/transcribe`, {
     method: 'POST',
     headers: {
@@ -803,7 +804,9 @@ export const saveVideoWithQuizService = async (userId, youtube_url, script) => {
 
   let aiResult = null;
   try {
-    aiResult = await generateQuizFromScript(script); 
+    aiResult = await generateQuizFromScript(script, {
+      durationSeconds: realDurationSeconds || 0,
+    }); 
   } catch (aiError) {
     console.warn("⚠️ [Auto-AI] Gemini API đang quá tải hoặc lỗi. Bỏ qua tạo Quiz:", aiError.message);
   }

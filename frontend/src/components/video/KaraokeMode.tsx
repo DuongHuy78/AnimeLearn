@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   BookOpen,
   ChevronLeft,
@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { videoApi } from '@/api/video.api';
 import { cn } from '@/lib/utils';
 
 type KaraokeTheme = 'dark' | 'light' | 'pink' | 'blue';
@@ -88,6 +89,19 @@ const getCookie = (name: string) => {
   const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
   if (match) return match[2];
   return null;
+};
+
+const extractFuriganaReading = (html: string) => {
+  return html
+    .replace(/<ruby>[\s\S]*?<\/ruby>/g, (ruby) => {
+      const rt = ruby.match(/<rt>([\s\S]*?)<\/rt>/);
+      return rt?.[1] || '';
+    })
+    .replace(/<rp>[\s\S]*?<\/rp>/g, '')
+    .replace(/<rt>[\s\S]*?<\/rt>/g, '')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 };
 
 interface KaraokeModeProps {
@@ -209,6 +223,9 @@ export default function KaraokeMode({
   const [isDragging, setIsDragging] = useState(false);
   const [volume, setVolume] = useState(100);
   const [isMuted, setIsMuted] = useState(false);
+  const [furiganaByText, setFuriganaByText] = useState<Record<string, string>>({});
+  const furiganaCache = useRef<Record<string, string>>({});
+  const furiganaPending = useRef<Record<string, Promise<string>>>({});
 
   const [modalStep, setModalStep] = useState(0);
   const [selectedLine, setSelectedLine] = useState<ScriptLine | null>(null);
@@ -221,6 +238,41 @@ export default function KaraokeMode({
   };
 
   const currentTheme = themeStyles[theme];
+
+  const fetchFuriganaReading = useCallback((rawText: string) => {
+    const text = rawText.trim();
+    if (!text) return Promise.resolve('');
+
+    if (furiganaCache.current[text]) {
+      return Promise.resolve(furiganaCache.current[text]);
+    }
+
+    if (!furiganaPending.current[text]) {
+      furiganaPending.current[text] = videoApi
+        .createFuriganaLine<{ html?: string }>(text)
+        .then((data) => {
+          const reading = extractFuriganaReading(data.html || '');
+
+          if (reading) {
+            furiganaCache.current[text] = reading;
+            setFuriganaByText((prev) => (
+              prev[text] === reading ? prev : { ...prev, [text]: reading }
+            ));
+          }
+
+          return reading;
+        })
+        .catch((error) => {
+          console.debug('Unable to load karaoke furigana', error);
+          return '';
+        })
+        .finally(() => {
+          delete furiganaPending.current[text];
+        });
+    }
+
+    return furiganaPending.current[text];
+  }, []);
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | undefined;
@@ -266,12 +318,22 @@ export default function KaraokeMode({
       const targetScroll =
         activeEl.offsetTop -
         container.offsetTop -
-        container.clientHeight / 2 +
+        container.clientHeight * 0.62 +
         activeEl.clientHeight / 2;
 
       container.scrollTo({ top: Math.max(0, targetScroll), behavior: 'smooth' });
     }
   }, [currentIndex]);
+
+  useEffect(() => {
+    const texts = Array.from(new Set(
+      script.map((line) => line.japanese?.trim() || '').filter(Boolean)
+    ));
+
+    texts.forEach((text) => {
+      void fetchFuriganaReading(text);
+    });
+  }, [fetchFuriganaReading, script]);
 
   const handleSeekCommit = () => {
     playerRef?.current?.seekTo?.(currentTime, true);
@@ -329,7 +391,7 @@ export default function KaraokeMode({
   return (
     <div
       className={cn(
-        'relative flex h-[calc(100vh-11rem)] min-h-[560px] max-h-[820px] w-full flex-col overflow-hidden rounded-2xl border shadow-xl transition-colors duration-500',
+        'relative flex h-[calc(100vh-10.75rem)] min-h-[520px] max-h-[820px] w-full flex-col overflow-hidden rounded-2xl border shadow-xl transition-colors duration-500',
         currentTheme.shell
       )}
     >
@@ -386,13 +448,14 @@ export default function KaraokeMode({
       <div className={cn('relative min-h-0 flex-1 overflow-hidden', currentTheme.stage)}>
         <div
           ref={containerRef}
-          className="h-full overflow-y-auto custom-scrollbar scroll-smooth px-4 py-20 md:px-10 md:py-24 lg:px-20"
+          className="h-full overflow-y-auto custom-scrollbar scroll-smooth px-4 pb-28 pt-36 md:px-10 md:pb-32 md:pt-40 lg:px-20"
         >
           <div className="mx-auto max-w-5xl space-y-5">
             {script.map((line, index) => {
               const isActive = index === currentIndex;
               const distance = Math.abs(index - currentIndex);
               const isNear = distance <= 1;
+              const furigana = line.japanese ? furiganaByText[line.japanese.trim()] : '';
 
               return (
                 <button
@@ -429,9 +492,21 @@ export default function KaraokeMode({
                   >
                     {line.japanese}
                   </h2>
+                  {furigana && (
+                    <p
+                      className={cn(
+                        'mt-2 break-words font-bold leading-relaxed tracking-normal transition-colors duration-500',
+                        isActive
+                          ? cn('text-sm md:text-lg', currentTheme.accentText)
+                          : cn(currentTheme.subText, isNear ? 'text-xs md:text-base' : 'text-xs')
+                      )}
+                    >
+                      {furigana}
+                    </p>
+                  )}
                   <p
                     className={cn(
-                      'mt-3 break-words font-semibold leading-relaxed transition-colors duration-500',
+                      'mt-2 break-words font-semibold leading-relaxed transition-colors duration-500',
                       isActive
                         ? cn('text-base md:text-xl', currentTheme.activeSubText)
                         : cn(currentTheme.subText, isNear ? 'text-sm md:text-base' : 'text-sm')
@@ -464,7 +539,7 @@ export default function KaraokeMode({
           <span>{formatTime(duration)}</span>
         </div>
 
-        <div className="mx-auto mt-4 flex min-h-16 w-full max-w-6xl flex-col gap-3 md:grid md:grid-cols-[1fr_auto_1fr] md:items-center">
+        <div className="mx-auto mt-3 flex min-h-16 w-full max-w-6xl flex-col gap-3 md:grid md:grid-cols-[1fr_auto_1fr] md:items-center">
           <div className="hidden min-w-0 items-center gap-2 md:flex">
             <Badge variant="outline" className={cn('h-7 rounded-full px-3 text-[10px] font-black uppercase', currentTheme.badge)}>
               Karaoke mode
@@ -487,7 +562,7 @@ export default function KaraokeMode({
               aria-label={isPlaying ? 'Tạm dừng' : 'Phát'}
               onClick={onTogglePlay}
               className={cn(
-                'flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-all duration-200 hover:scale-105 active:scale-95',
+                'flex h-12 w-12 items-center justify-center rounded-full shadow-lg transition-all duration-200 hover:scale-105 active:scale-95',
                 currentTheme.playButton
               )}
             >

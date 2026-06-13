@@ -1,33 +1,46 @@
-import { useState, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import YouTubeOrigin from 'react-youtube';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Loader2, Sparkles, CheckCircle2, XCircle, ArrowRight, RotateCcw, BrainCircuit, PlayCircle, Clock } from 'lucide-react';
-import { toast } from 'sonner';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  ArrowRight,
+  BrainCircuit,
+  CheckCircle2,
+  ChevronLeft,
+  Clock,
+  ListChecks,
+  Loader2,
+  Play,
+  RotateCcw,
+  Sparkles,
+  TimerReset,
+  Trophy,
+  XCircle,
+} from 'lucide-react';
+import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { quizApi } from '@/api/quiz.api';
 
 const YouTube = (YouTubeOrigin as any).default || YouTubeOrigin;
 
-// Hàm tiện ích chuyển đổi "01:30" thành giây
-function parseTimestampToSeconds(timestamp: string): number {
-  if (!timestamp) return 0;
-  const parts = timestamp.split(':').map(Number);
-  if (parts.length === 2) {
-    return parts[0] * 60 + parts[1];
-  } else if (parts.length === 3) {
-    return parts[0] * 3600 + parts[1] * 60 + parts[2];
-  }
-  return 0;
-}
-
-// --- Interfaces ---
-type QuestionType = 'fill_in_blank' | 'vocabulary' | 'translation' | 'grammar_particle' | 'kanji_reading';
+type ScriptLine = {
+  timestamp?: string;
+  start?: number;
+  start_time?: number;
+  startTimeSeconds?: number;
+  end?: number;
+  end_time?: number;
+  endTimeSeconds?: number;
+  japanese?: string;
+  vietnamese?: string;
+};
 
 export interface QuizQuestion {
   timestamp: string;
-  type: QuestionType;
+  startTimeSeconds?: number;
+  endTimeSeconds?: number;
+  type: string;
   questionText: string;
   options: string[];
   correctAnswerIndex: number;
@@ -42,24 +55,111 @@ export interface QuizData {
 
 interface QuizPageProps {
   videoId?: string | null;
-  script?: any[];
-  ytId?: string | null; // Thêm ytId để chạy video
-  onJumpToTime?: (index: number) => void;
+  script?: ScriptLine[];
+  ytId?: string | null;
 }
 
-// --- COMPONENT CHÍNH ---
+function parseTimestampToSeconds(value?: string | number | null): number {
+  if (typeof value === 'number' && Number.isFinite(value)) return Math.max(0, value);
+  if (!value || typeof value !== 'string') return 0;
+
+  const trimmed = value.trim();
+  if (!trimmed) return 0;
+  if (/^\d+(\.\d+)?$/.test(trimmed)) return Math.max(0, Number(trimmed));
+
+  const parts = trimmed.split(':').map(Number);
+  if (parts.some(Number.isNaN)) return 0;
+  if (parts.length === 2) return Math.max(0, parts[0] * 60 + parts[1]);
+  if (parts.length === 3) return Math.max(0, parts[0] * 3600 + parts[1] * 60 + parts[2]);
+  return 0;
+}
+
+function formatTime(value: number): string {
+  const totalSeconds = Math.max(0, Math.floor(value || 0));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  const mm = String(minutes).padStart(2, '0');
+  const ss = String(seconds).padStart(2, '0');
+  if (hours > 0) return `${String(hours).padStart(2, '0')}:${mm}:${ss}`;
+  return `${mm}:${ss}`;
+}
+
+function getQuestionStart(question?: QuizQuestion): number {
+  if (!question) return 0;
+  if (typeof question.startTimeSeconds === 'number') return Math.max(0, question.startTimeSeconds);
+  return parseTimestampToSeconds(question.timestamp);
+}
+
+function getQuestionEnd(question: QuizQuestion | undefined, questions: QuizQuestion[], index: number): number {
+  if (!question) return 0;
+  const start = getQuestionStart(question);
+  if (typeof question.endTimeSeconds === 'number' && question.endTimeSeconds > start) {
+    return question.endTimeSeconds;
+  }
+
+  const nextStart = getQuestionStart(questions[index + 1]);
+  if (nextStart > start) return nextStart;
+  return start + 30;
+}
+
+function getScriptDuration(script: ScriptLine[]): number {
+  if (!Array.isArray(script) || script.length === 0) return 0;
+
+  return script.reduce((maxDuration, line, index) => {
+    const start = parseTimestampToSeconds(line.startTimeSeconds ?? line.start_time ?? line.start ?? line.timestamp);
+    const explicitEnd = parseTimestampToSeconds(line.endTimeSeconds ?? line.end_time ?? line.end);
+    const next = script[index + 1];
+    const nextStart = next
+      ? parseTimestampToSeconds(next.startTimeSeconds ?? next.start_time ?? next.start ?? next.timestamp)
+      : 0;
+    const end = explicitEnd > start ? explicitEnd : nextStart > start ? nextStart : start + 6;
+    return Math.max(maxDuration, end, start);
+  }, 0);
+}
+
+function getQuestionTypeLabel(type: string): string {
+  switch (type) {
+    case 'fill_in_blank':
+      return 'Điền chỗ trống';
+    case 'vocabulary':
+      return 'Từ vựng';
+    case 'translation':
+      return 'Dịch nghĩa';
+    case 'grammar_particle':
+      return 'Ngữ pháp';
+    case 'kanji_reading':
+      return 'Đọc Kanji';
+    case 'sentence_reorder':
+      return 'Sắp xếp câu';
+    case 'context_comprehension':
+      return 'Hiểu ngữ cảnh';
+    case 'expression_intent':
+      return 'Ý định câu nói';
+    case 'inference':
+      return 'Suy luận';
+    case 'conjugation':
+      return 'Chia thể';
+    case 'polite_casual':
+      return 'Sắc thái';
+    case 'counter_word':
+      return 'Lượng từ';
+    default:
+      return 'Trắc nghiệm';
+  }
+}
+
 export default function QuizPage({ videoId = null, script = [], ytId }: QuizPageProps) {
   const queryClient = useQueryClient();
   const playerRef = useRef<any>(null);
 
-  const [isTakingQuiz, setIsTakingQuiz] = useState(false);
   const [currentQ, setCurrentQ] = useState(0);
-  const [selectedOption, setSelectedOption] = useState<number | null>(null);
-  const [showResult, setShowResult] = useState(false);
-  const [score, setScore] = useState(0);
+  const [answers, setAnswers] = useState<Record<number, number>>({});
   const [quizDone, setQuizDone] = useState(false);
+  const [playerDuration, setPlayerDuration] = useState(0);
+  const [isSegmentPlaying, setIsSegmentPlaying] = useState(false);
 
-  // Fetch Quiz
   const { data: existingQuiz, isLoading: isFetchingQuiz } = useQuery<QuizData | null>({
     queryKey: ['video-quiz', videoId],
     queryFn: async () => {
@@ -69,337 +169,476 @@ export default function QuizPage({ videoId = null, script = [], ytId }: QuizPage
     enabled: !!videoId,
   });
 
-  // Mutation AI tạo Quiz và chấm điểm JLPT
   const generateQuizMutation = useMutation({
     mutationFn: async () => {
       if (!videoId) throw new Error('Thiếu mã video');
-      if (!script || script.length === 0) throw new Error('Video chưa có kịch bản (script) để tạo quiz.');
+      if (!script || script.length === 0) throw new Error('Video chưa có script để tạo quiz.');
 
-      // Backend lúc này sẽ trả về object: { message, quiz, jlptLevel }
-      return quizApi.generateQuiz<{ message?: string; quiz: QuizData; jlptLevel?: string }>(videoId, { script }); 
+      return quizApi.generateQuiz<{ message?: string; quiz: QuizData; jlptLevel?: string }>(videoId, { script });
     },
     onSuccess: (data) => {
-      // Hiển thị luôn Level AI vừa chấm được lên Toast
-      toast.success(`🎉 AI đã tạo bài tập và đánh giá trình độ: ${data.jlptLevel || 'Thành công'}!`);
-      
-      // 1. Load lại ngay lập tức dữ liệu bài Quiz
+      toast.success(`AI đã tạo quiz${data.jlptLevel ? ` và đánh giá trình độ ${data.jlptLevel}` : ''}.`);
       queryClient.invalidateQueries({ queryKey: ['video-quiz', videoId] });
-      
-      // 2. Load lại danh sách video để cập nhật Badge JLPT ở các nơi khác
       queryClient.invalidateQueries({ queryKey: ['community-videos'] });
       queryClient.invalidateQueries({ queryKey: ['video-detail', videoId] });
-
-      /* 💡 MẸO NHỎ: 
-         Vì trước đây VideoWorkspace tự gọi API trong useEffect 
-         để lấy thông tin Video (chứ không dùng useQuery), nên invalidateQueries ở trên 
-         có thể không tự động cập nhật cái chữ "Unknown" trên Badge.
-         
-         Nếu bạn thấy Badge JLPT chưa tự đổi số, hãy mở comment dòng dưới đây để reload nhẹ trang:
-      */
-      // setTimeout(() => window.location.reload(), 1500);
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast.error(err.message || 'Không thể tạo quiz lúc này');
-    }
+    },
   });
 
-  // Tự động tua video khi chuyển câu hỏi
-  useEffect(() => {
-    if (existingQuiz && existingQuiz.questions[currentQ]) {
-      const q = existingQuiz.questions[currentQ];
-      if (playerRef.current && q.timestamp) {
-        const timeSec = parseTimestampToSeconds(q.timestamp);
-        playerRef.current.seekTo(timeSec, true);
-        playerRef.current.pauseVideo(); // Pause để người dùng tự bấm Play nếu muốn xem context
-      }
-    }
-  }, [currentQ, existingQuiz]);
+  const questions = existingQuiz?.questions ?? [];
+  const q = questions[currentQ];
+  const selectedOption = answers[currentQ];
+  const showResult = selectedOption !== undefined;
+  const answeredCount = Object.keys(answers).length;
+  const estimatedQuestionCount = Math.max(1, Math.floor(getScriptDuration(script) / 30) || 1);
 
-  // --- Handlers ---
+  const score = useMemo(() => {
+    return questions.reduce((total, question, index) => (
+      answers[index] === question.correctAnswerIndex ? total + 1 : total
+    ), 0);
+  }, [answers, questions]);
+
+  const segmentStart = getQuestionStart(q);
+  const segmentEnd = getQuestionEnd(q, questions, currentQ);
+  const timelineDuration = Math.max(
+    playerDuration,
+    getScriptDuration(script),
+    ...questions.map((question, index) => getQuestionEnd(question, questions, index)),
+    segmentEnd,
+    1,
+  );
+  const segmentLeft = Math.min(100, Math.max(0, (segmentStart / timelineDuration) * 100));
+  const segmentWidth = Math.max(2, Math.min(100 - segmentLeft, ((segmentEnd - segmentStart) / timelineDuration) * 100));
+
+  const seekToQuestionStart = useCallback((play = true, targetQuestion = q) => {
+    if (!targetQuestion || !playerRef.current) return;
+
+    const start = getQuestionStart(targetQuestion);
+    playerRef.current.seekTo?.(start, true);
+
+    if (play) {
+      playerRef.current.playVideo?.();
+      setIsSegmentPlaying(true);
+    } else {
+      playerRef.current.pauseVideo?.();
+      setIsSegmentPlaying(false);
+    }
+  }, [q]);
+
+  useEffect(() => {
+    if (!q || !playerRef.current) return;
+    seekToQuestionStart(true);
+  }, [currentQ, q, seekToQuestionStart]);
+
+  useEffect(() => {
+    if (!isSegmentPlaying || !q || !playerRef.current) return undefined;
+
+    const intervalId = window.setInterval(async () => {
+      const currentTime = await playerRef.current?.getCurrentTime?.();
+      if (typeof currentTime === 'number' && currentTime >= segmentEnd - 0.1) {
+        playerRef.current?.pauseVideo?.();
+        setIsSegmentPlaying(false);
+      }
+    }, 250);
+
+    return () => window.clearInterval(intervalId);
+  }, [isSegmentPlaying, q, segmentEnd]);
+
   const handleStartQuiz = () => {
-    setIsTakingQuiz(true);
     setCurrentQ(0);
-    setScore(0);
-    setSelectedOption(null);
-    setShowResult(false);
+    setAnswers({});
     setQuizDone(false);
+    setIsSegmentPlaying(false);
   };
 
   const handleAnswer = (optionIndex: number) => {
-    setSelectedOption(optionIndex);
-    setShowResult(true);
-    if (existingQuiz && optionIndex === existingQuiz.questions[currentQ].correctAnswerIndex) {
-      setScore(score + 1);
-    }
+    setAnswers(prev => {
+      if (prev[currentQ] !== undefined) return prev;
+      return { ...prev, [currentQ]: optionIndex };
+    });
+  };
+
+  const goToQuestion = (index: number) => {
+    if (index < 0 || index >= questions.length) return;
+    seekToQuestionStart(true, questions[index]);
+    setCurrentQ(index);
+    setQuizDone(false);
   };
 
   const nextQuestion = () => {
-    if (!existingQuiz) return;
-    if (currentQ < existingQuiz.questions.length - 1) {
-      setCurrentQ(currentQ + 1);
-      setSelectedOption(null);
-      setShowResult(false);
-    } else {
-      setQuizDone(true);
+    if (currentQ < questions.length - 1) {
+      goToQuestion(currentQ + 1);
+      return;
     }
+    setQuizDone(true);
   };
 
-  // Cập nhật hàm getQuestionTypeLabel (Khoảng dòng 130)
-  const getQuestionTypeLabel = (type: QuestionType) => {
-    switch (type) {
-      case 'fill_in_blank': return 'Điền từ';
-      case 'vocabulary': return 'Từ vựng';
-      case 'translation': return 'Dịch thuật';
-      case 'grammar_particle': return 'Ngữ pháp & Trợ từ'; // Mới
-      case 'kanji_reading': return 'Đọc Kanji'; // Mới
-      default: return 'Trắc nghiệm';
-    }
+  const previousQuestion = () => {
+    goToQuestion(currentQ - 1);
   };
 
-  // --- RENDERS ---
   if (!videoId) {
-    return <div className="h-full flex items-center justify-center p-8 text-slate-500">Vui lòng lưu video và kịch bản vào sổ tay trước khi tạo Quiz.</div>;
+    return (
+      <div className="flex h-full min-h-[520px] items-center justify-center bg-slate-50 p-6 text-center text-slate-600">
+        Vui lòng lưu video và script trước khi tạo quiz.
+      </div>
+    );
   }
 
   if (isFetchingQuiz) {
     return (
-      <div className="h-full flex flex-col items-center justify-center p-8 text-slate-500">
-        <Loader2 className="w-8 h-8 animate-spin text-violet-500 mb-4" />
-        <p>Đang kiểm tra dữ liệu bài tập...</p>
+      <div className="flex h-full min-h-[520px] flex-col items-center justify-center bg-slate-50 p-6 text-slate-600">
+        <Loader2 className="mb-4 h-8 w-8 animate-spin text-emerald-600" />
+        <p className="text-sm font-semibold">Đang kiểm tra quiz của video...</p>
       </div>
     );
   }
 
-  // TRẠNG THÁI 1: CHƯA CÓ QUIZ
-  if (!existingQuiz && !isTakingQuiz && !generateQuizMutation.isPending) {
+  if (!existingQuiz && !generateQuizMutation.isPending) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-12 w-full animate-in fade-in duration-500">
-        <div className="rounded-[2rem] bg-white border border-slate-200 shadow-sm p-8 md:p-12 text-center dark:border-slate-700 dark:bg-slate-950">
-          <div className="w-20 h-20 bg-violet-100 rounded-[2rem] flex items-center justify-center mx-auto mb-6 shadow-inner dark:bg-violet-950/50">
-            <BrainCircuit className="w-10 h-10 text-violet-600" />
+      <div className="flex h-full min-h-[560px] items-center justify-center bg-slate-50 p-4 md:p-6">
+        <section className="w-full max-w-2xl rounded-lg border border-slate-200 bg-white p-6 shadow-sm md:p-8">
+          <div className="mb-5 flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
+              <BrainCircuit className="h-6 w-6" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-slate-950">Tạo quiz từ video</h2>
+              <p className="text-sm text-slate-500">Mỗi 30 giây video sẽ có một câu quiz.</p>
+            </div>
           </div>
-          <h2 className="text-2xl font-bold text-slate-800 mb-3">Tạo Quiz AI từ Kịch Bản</h2>
-          <p className="text-slate-500 mb-8 max-w-md mx-auto">
-            Hệ thống sẽ dùng <b>AI</b> đọc kịch bản video và tự động trích xuất các bài tập điền từ, từ vựng, và dịch thuật cho mỗi 30 giây của video.
-          </p>
-          <Button 
+
+          <div className="mb-6 grid gap-3 sm:grid-cols-3">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs font-semibold uppercase text-slate-500">Ước tính</p>
+              <p className="mt-1 text-2xl font-bold text-slate-950">{estimatedQuestionCount}</p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs font-semibold uppercase text-slate-500">Nguồn</p>
+              <p className="mt-1 text-2xl font-bold text-slate-950">{script.length}</p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs font-semibold uppercase text-slate-500">Dạng câu</p>
+              <p className="mt-1 text-2xl font-bold text-slate-950">12</p>
+            </div>
+          </div>
+
+          <Button
             onClick={() => generateQuizMutation.mutate()}
             disabled={!script || script.length === 0}
-            className="bg-violet-600 hover:opacity-90 text-white rounded-xl px-8 py-6 text-lg h-auto shadow-md w-full sm:w-auto"
+            className="h-11 w-full rounded-lg bg-emerald-600 text-sm font-bold text-white hover:bg-emerald-700 sm:w-auto"
           >
-            <Sparkles className="w-5 h-5 mr-2" /> Tạo Quiz Ngay Bằng AI
+            <Sparkles className="mr-2 h-4 w-4" />
+            Tạo quiz bằng AI
           </Button>
+
           {(!script || script.length === 0) && (
-            <p className="text-rose-500 text-sm mt-4 font-medium">Cần tạo Script AI bên Tab "Luyện Shadowing" trước khi tạo Quiz.</p>
+            <p className="mt-4 text-sm font-medium text-rose-600">Cần tạo script ở tab Luyện Shadowing trước.</p>
           )}
-        </div>
+        </section>
       </div>
     );
   }
 
-  // TRẠNG THÁI 2: ĐANG TẠO (LOADING)
   if (generateQuizMutation.isPending) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-12 w-full animate-in fade-in duration-500">
-        <div className="rounded-[2rem] bg-white border border-slate-200 shadow-sm p-16 flex flex-col items-center justify-center dark:border-slate-700 dark:bg-slate-950">
-          <div className="relative mb-6">
-            <div className="absolute inset-0 bg-violet-400 blur-xl opacity-20 rounded-full animate-pulse"></div>
-            <Loader2 className="w-16 h-16 text-violet-500 animate-spin relative z-10" />
-          </div>
-          <h3 className="text-xl font-bold text-slate-800 mb-2">Đang thiết kế bài tập</h3>
-          <p className="text-slate-500 text-center max-w-sm">AI đang đọc hiểu ngữ cảnh và trộn các câu hỏi hay nhất dành cho bạn...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // TRẠNG THÁI 3: ĐÃ CÓ QUIZ NHƯNG CHƯA BẮT ĐẦU LÀM
-  if (existingQuiz && !isTakingQuiz && !quizDone) {
-    return (
-      <div className="max-w-2xl mx-auto px-4 py-12 w-full animate-in fade-in duration-500">
-        <div className="rounded-[2rem] bg-white border border-slate-200 shadow-sm p-8 md:p-12 text-center dark:border-slate-700 dark:bg-slate-950">
-          <div className="w-20 h-20 bg-emerald-100 rounded-[2rem] flex items-center justify-center mx-auto mb-6 shadow-inner dark:bg-emerald-950/50">
-            <CheckCircle2 className="w-10 h-10 text-emerald-600" />
-          </div>
-          <h2 className="text-2xl font-bold text-slate-800 mb-3">Quiz Đã Sẵn Sàng!</h2>
-          <p className="text-slate-500 mb-8 max-w-md mx-auto">
-            AI đã tạo xong bộ <b>{existingQuiz.questions.length} câu hỏi</b> từ video này. Hãy thử kiểm tra trí nhớ của bạn nhé!
+      <div className="flex h-full min-h-[560px] items-center justify-center bg-slate-50 p-4 md:p-6">
+        <section className="flex w-full max-w-2xl flex-col items-center rounded-lg border border-slate-200 bg-white p-8 text-center shadow-sm md:p-12">
+          <Loader2 className="mb-5 h-12 w-12 animate-spin text-emerald-600" />
+          <h2 className="text-xl font-bold text-slate-950">AI đang tạo quiz</h2>
+          <p className="mt-2 max-w-md text-sm leading-6 text-slate-600">
+            Hệ thống đang chia video theo từng đoạn 30 giây và chọn kiểu câu hỏi phù hợp.
           </p>
-          <Button onClick={handleStartQuiz} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-8 py-6 text-lg h-auto shadow-md">
-            <PlayCircle className="w-5 h-5 mr-2" /> Bắt đầu làm bài
-          </Button>
-        </div>
+        </section>
       </div>
     );
   }
 
-  const q = existingQuiz?.questions[currentQ];
-
-  // TRẠNG THÁI 4: KẾT QUẢ CUỐI CÙNG
   if (quizDone && existingQuiz) {
-    const percent = Math.round((score / existingQuiz.questions.length) * 100);
+    const percent = Math.round((score / Math.max(1, questions.length)) * 100);
+
     return (
-      <div className="max-w-2xl mx-auto px-4 py-12 w-full">
-        <motion.div
-          initial={{ scale: 0.9, opacity: 0 }}
+      <div className="flex h-full min-h-[560px] items-center justify-center bg-slate-50 p-4 md:p-6">
+        <motion.section
+          initial={{ scale: 0.96, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="rounded-[2rem] bg-white border border-slate-200 shadow-sm p-10 text-center dark:border-slate-700 dark:bg-slate-950"
+          className="w-full max-w-2xl rounded-lg border border-slate-200 bg-white p-6 text-center shadow-sm md:p-8"
         >
-          <div className="text-7xl mb-6">{percent >= 70 ? '🎉' : '💪'}</div>
-          <h2 className="text-3xl font-extrabold text-slate-900 mb-4">Kết quả của bạn</h2>
-          <div className="inline-block px-8 py-4 bg-violet-50 rounded-3xl mb-6 border border-violet-100 dark:border-violet-800 dark:bg-violet-950/35">
-            <p className="text-6xl font-black bg-linear-to-r from-violet-600 to-fuchsia-600 bg-clip-text text-transparent">
-              {score} <span className="text-3xl text-slate-400">/ {existingQuiz.questions.length}</span>
-            </p>
+          <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-lg bg-amber-50 text-amber-700">
+            <Trophy className="h-7 w-7" />
           </div>
-          <p className="text-slate-600 text-lg mb-10 font-medium">
-            {percent >= 70 ? 'Tuyệt vời! Bạn đã nắm vững kiến thức từ video này!' : 'Đừng nản chí! Hãy ôn tập kịch bản và thử sức lần nữa nhé!'}
+          <h2 className="text-2xl font-bold text-slate-950">Kết quả của bạn</h2>
+          <p className="mt-3 text-5xl font-black text-slate-950">
+            {score}<span className="text-2xl text-slate-400">/{questions.length}</span>
           </p>
-          <Button onClick={handleStartQuiz} variant="outline" className="border-slate-200 text-slate-600 hover:bg-slate-50 h-12 px-8 rounded-xl text-base font-semibold">
-            <RotateCcw className="w-5 h-5 mr-2" /> Làm lại bài này
-          </Button>
-        </motion.div>
+          <p className="mt-3 text-sm font-semibold text-slate-600">{percent}% hoàn thành chính xác</p>
+          <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
+            <Button onClick={handleStartQuiz} className="h-11 rounded-lg bg-emerald-600 px-5 font-bold text-white hover:bg-emerald-700">
+              <RotateCcw className="mr-2 h-4 w-4" />
+              Làm lại
+            </Button>
+            <Button onClick={() => setQuizDone(false)} variant="outline" className="h-11 rounded-lg px-5 font-bold">
+              Xem lại câu hỏi
+            </Button>
+          </div>
+        </motion.section>
       </div>
     );
   }
 
-  // TRẠNG THÁI 5: ĐANG LÀM BÀI
-  if (q) {
-    return (
-      <div className="max-w-4xl mx-auto px-4 py-8 md:py-12 w-full">
-        {/* Progress Bar */}
-        <div className="flex items-center gap-4 mb-6 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm dark:border-slate-700 dark:bg-slate-950">
-          <span className="text-sm font-bold text-slate-500 whitespace-nowrap">Câu {currentQ + 1} / {existingQuiz.questions.length}</span>
-          <div className="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-linear-to-r from-violet-500 to-fuchsia-500 rounded-full transition-all duration-500 ease-out"
-              style={{ width: `${((currentQ + 1) / existingQuiz.questions.length) * 100}%` }}
-            />
-          </div>
-          <Badge className="bg-violet-100 text-violet-700 border-0 font-bold px-3 py-1 shadow-xs">
-            {score} Điểm
-          </Badge>
-        </div>
+  if (!q || !existingQuiz) return null;
 
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={currentQ}
-            initial={{ x: 30, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: -30, opacity: 0 }}
-            className="rounded-[2rem] bg-white border border-slate-200 shadow-sm p-6 md:p-8 flex flex-col dark:border-slate-700 dark:bg-slate-950"
-          >
-            {/* Header: Type Badge & Context Video Layout */}
-            <div className="flex flex-col md:flex-row gap-6 mb-8">
-              
-              {/* Cửa sổ Video Context (Bên trái nếu màn hình rộng, hoặc ở trên) */}
-              {ytId && (
-                <div className="w-full md:w-5/12 aspect-video rounded-xl overflow-hidden bg-slate-900 shadow-inner shrink-0 relative">
-                  <YouTube
-                    videoId={ytId}
-                    className="w-full h-full absolute inset-0"
-                    iframeClassName="w-full h-full border-0"
-                    opts={{ playerVars: { autoplay: 0, controls: 1, rel: 0 } }}
-                    onReady={(e: any) => {
-                      playerRef.current = e.target;
-                      if (q.timestamp) {
-                        e.target.seekTo(parseTimestampToSeconds(q.timestamp), true);
-                      }
-                    }}
-                  />
+  return (
+    <div className="h-full min-h-[620px] overflow-y-auto bg-slate-50">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-5 p-4 md:p-6">
+        <header className="flex flex-col gap-4 border-b border-slate-200 pb-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge className="rounded-md border-0 bg-emerald-100 px-2.5 py-1 text-emerald-800">
+                Câu {currentQ + 1}/{questions.length}
+              </Badge>
+              <Badge variant="outline" className="rounded-md border-slate-200 bg-white px-2.5 py-1 text-slate-700">
+                {score} điểm
+              </Badge>
+              <Badge variant="outline" className="rounded-md border-slate-200 bg-white px-2.5 py-1 text-slate-700">
+                {answeredCount}/{questions.length} đã trả lời
+              </Badge>
+            </div>
+            <div className="mt-3 h-2 w-full max-w-xl overflow-hidden rounded-full bg-slate-200">
+              <div
+                className="h-full rounded-full bg-emerald-500 transition-all duration-300"
+                style={{ width: `${((currentQ + 1) / questions.length) * 100}%` }}
+              />
+            </div>
+          </div>
+
+          <Button onClick={() => seekToQuestionStart(true)} variant="outline" className="h-10 rounded-lg border-slate-300 bg-white font-bold">
+            <TimerReset className="mr-2 h-4 w-4" />
+            Replay đoạn
+          </Button>
+        </header>
+
+        <div className="grid gap-5 lg:grid-cols-[minmax(320px,0.95fr)_minmax(0,1.05fr)]">
+          <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
+            <div className="relative aspect-video overflow-hidden rounded-t-lg bg-slate-950">
+              {ytId ? (
+                <YouTube
+                  videoId={ytId}
+                  className="absolute inset-0 h-full w-full"
+                  iframeClassName="h-full w-full border-0"
+                  opts={{ playerVars: { autoplay: 0, controls: 1, rel: 0 } }}
+                  onReady={(event: any) => {
+                    playerRef.current = event.target;
+                    const duration = event.target.getDuration?.();
+                    if (typeof duration === 'number' && duration > 0) setPlayerDuration(duration);
+                    event.target.seekTo?.(segmentStart, true);
+                    event.target.playVideo?.();
+                    setIsSegmentPlaying(true);
+                  }}
+                  onStateChange={(event: any) => {
+                    if (event.data === 2 || event.data === 0) setIsSegmentPlaying(false);
+                  }}
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center p-6 text-center text-sm font-semibold text-slate-300">
+                  Video chưa sẵn sàng
                 </div>
               )}
 
-              {/* Phần câu hỏi */}
-              <div className="flex-1 flex flex-col justify-center">
-                <div className="flex flex-wrap items-center gap-2 mb-4">
-                  <Badge variant="outline" className="bg-violet-50 text-violet-700 border-violet-200 font-semibold tracking-wide uppercase text-[10px] dark:border-violet-800 dark:bg-violet-950/35 dark:text-violet-200">
-                    {getQuestionTypeLabel(q.type)}
-                  </Badge>
-                  <Badge className="bg-slate-100 text-slate-500 border-0 font-mono text-[10px] tracking-wider flex items-center">
-                    <Clock className="w-3 h-3 mr-1" /> {q.timestamp}
-                  </Badge>
+              <div className="pointer-events-none absolute left-3 right-3 top-3 rounded-lg border border-emerald-300/60 bg-slate-950/75 p-3 text-white shadow-lg backdrop-blur">
+                <div className="mb-2 flex items-center justify-between gap-3 text-xs font-bold">
+                  <span className="inline-flex items-center gap-1.5">
+                    <Clock className="h-3.5 w-3.5 text-emerald-300" />
+                    Vùng quiz
+                  </span>
+                  <span className="font-mono">{formatTime(segmentStart)} - {formatTime(segmentEnd)}</span>
                 </div>
-                <h3 
-                  className="text-xl font-bold text-slate-800 mb-4"
-                  dangerouslySetInnerHTML={{ __html: q.questionText }}
-                />
+                <div className="relative h-2 overflow-hidden rounded-full bg-white/20">
+                  <div
+                    className="absolute top-0 h-full rounded-full bg-emerald-400"
+                    style={{ left: `${segmentLeft}%`, width: `${segmentWidth}%` }}
+                  />
+                </div>
               </div>
             </div>
 
-            {/* Các đáp án trắc nghiệm */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {q.options.map((option: string, i: number) => {
-                const isCorrect = i === q.correctAnswerIndex;
-                const isSelected = i === selectedOption;
+            <div className="space-y-4 p-4">
+              <div>
+                <div className="mb-2 flex items-center justify-between text-xs font-semibold text-slate-500">
+                  <span>{formatTime(0)}</span>
+                  <span>{formatTime(timelineDuration)}</span>
+                </div>
+                <div className="relative h-3 rounded-full bg-slate-200">
+                  <div
+                    className="absolute top-0 h-3 rounded-full bg-emerald-500"
+                    style={{ left: `${segmentLeft}%`, width: `${segmentWidth}%` }}
+                  />
+                  {questions.map((question, index) => {
+                    const left = Math.min(100, Math.max(0, (getQuestionStart(question) / timelineDuration) * 100));
+                    const answered = answers[index] !== undefined;
+                    return (
+                      <button
+                        key={`${question.timestamp}-${index}`}
+                        type="button"
+                        aria-label={`Câu ${index + 1}`}
+                        title={`Câu ${index + 1}`}
+                        onClick={() => goToQuestion(index)}
+                        className={`absolute top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 transition-colors ${
+                          index === currentQ
+                            ? 'border-emerald-700 bg-white'
+                            : answered
+                              ? 'border-emerald-500 bg-emerald-500'
+                              : 'border-white bg-slate-400'
+                        }`}
+                        style={{ left: `${left}%` }}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
 
-                return (
-                  <button
-                    key={i}
-                    onClick={() => !showResult && handleAnswer(i)}
-                    disabled={showResult}
-                    className={`w-full text-left p-4 md:p-5 rounded-2xl border-2 transition-all duration-200 outline-hidden focus-visible:ring-4 focus-visible:ring-violet-500/20 ${
-                      showResult
-                        ? isCorrect
-                          ? 'border-emerald-500 bg-emerald-50/50 text-emerald-800 shadow-sm dark:bg-emerald-950/35 dark:text-emerald-100'
-                          : isSelected
-                            ? 'border-rose-400 bg-rose-50/50 text-rose-800 dark:bg-rose-950/35 dark:text-rose-100'
-                            : 'border-slate-100 bg-slate-50 opacity-60 text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500'
-                        : 'border-slate-200 hover:border-violet-400 hover:bg-violet-50/30 text-slate-700 hover:shadow-sm dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-200 dark:hover:border-violet-500 dark:hover:bg-violet-950/30'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold shrink-0 transition-colors ${
-                         showResult && isCorrect ? 'bg-emerald-500 text-white' : 
-                         showResult && isSelected ? 'bg-rose-500 text-white' : 
-                         'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300'
-                      }`}>
-                        {String.fromCharCode(65 + i)}
-                      </span>
-                      <span className="flex-1 text-base font-medium">{option}</span>
-                      
-                      {showResult && isCorrect && <CheckCircle2 className="w-6 h-6 text-emerald-500 shrink-0" />}
-                      {showResult && isSelected && !isCorrect && <XCircle className="w-6 h-6 text-rose-500 shrink-0" />}
-                    </div>
-                  </button>
-                );
-              })}
+              <div className="flex flex-wrap items-center gap-2">
+                <Button onClick={() => seekToQuestionStart(true)} className="h-10 rounded-lg bg-slate-900 px-4 font-bold text-white hover:bg-slate-800">
+                  <Play className="mr-2 h-4 w-4" />
+                  Replay
+                </Button>
+                <Badge variant="outline" className="rounded-md border-slate-200 px-2.5 py-1 font-mono text-slate-700">
+                  {formatTime(segmentEnd - segmentStart)}
+                </Badge>
+              </div>
+
+              <div>
+                <div className="mb-2 flex items-center gap-2 text-sm font-bold text-slate-800">
+                  <ListChecks className="h-4 w-4 text-emerald-600" />
+                  Danh sách câu
+                </div>
+                <div className="grid grid-cols-8 gap-2 sm:grid-cols-10 lg:grid-cols-8">
+                  {questions.map((question, index) => {
+                    const answered = answers[index] !== undefined;
+                    return (
+                      <button
+                        key={`${question.type}-${index}`}
+                        type="button"
+                        onClick={() => goToQuestion(index)}
+                        className={`flex h-9 w-9 items-center justify-center rounded-lg border text-sm font-bold transition-colors ${
+                          index === currentQ
+                            ? 'border-emerald-600 bg-emerald-600 text-white'
+                            : answered
+                              ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                              : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
+                        }`}
+                      >
+                        {index + 1}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
+          </section>
 
-            {/* Hộp Giải Thích */}
-            {showResult && q.explanation && (
-              <motion.div
-                initial={{ height: 0, opacity: 0, y: 10 }}
-                animate={{ height: 'auto', opacity: 1, y: 0 }}
-                className="mt-6 p-5 rounded-2xl bg-violet-50/80 border border-violet-100 shadow-inner dark:border-violet-800 dark:bg-violet-950/35"
-              >
-                <p className="text-slate-700 leading-relaxed text-sm md:text-base">
-                  <span className="text-violet-700 font-bold flex items-center gap-2 mb-1">
-                    <Sparkles className="w-4 h-4" /> Giải thích: 
+          <AnimatePresence mode="wait">
+            <motion.section
+              key={currentQ}
+              initial={{ x: 18, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -18, opacity: 0 }}
+              className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm md:p-6"
+            >
+              <div className="mb-5 flex flex-wrap items-center gap-2">
+                <Badge className="rounded-md border-0 bg-sky-100 px-2.5 py-1 text-sky-800">
+                  {getQuestionTypeLabel(q.type)}
+                </Badge>
+                <Badge variant="outline" className="rounded-md border-slate-200 px-2.5 py-1 font-mono text-slate-700">
+                  {formatTime(segmentStart)} - {formatTime(segmentEnd)}
+                </Badge>
+              </div>
+
+              <h3
+                className="mb-5 break-words text-xl font-bold leading-8 text-slate-950 md:text-2xl md:leading-9"
+                dangerouslySetInnerHTML={{ __html: q.questionText }}
+              />
+
+              <div className="grid gap-3">
+                {q.options.map((option, index) => {
+                  const isCorrect = index === q.correctAnswerIndex;
+                  const isSelected = index === selectedOption;
+
+                  return (
+                    <button
+                      key={`${option}-${index}`}
+                      type="button"
+                      onClick={() => handleAnswer(index)}
+                      disabled={showResult}
+                      className={`w-full rounded-lg border p-4 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
+                        showResult
+                          ? isCorrect
+                            ? 'border-emerald-500 bg-emerald-50 text-emerald-900'
+                            : isSelected
+                              ? 'border-rose-400 bg-rose-50 text-rose-900'
+                              : 'border-slate-200 bg-slate-50 text-slate-500'
+                          : 'border-slate-200 bg-white text-slate-800 hover:border-emerald-300 hover:bg-emerald-50/60'
+                      }`}
+                    >
+                      <span className="flex items-start gap-3">
+                        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-black ${
+                          showResult && isCorrect
+                            ? 'bg-emerald-600 text-white'
+                            : showResult && isSelected
+                              ? 'bg-rose-600 text-white'
+                              : 'bg-slate-100 text-slate-600'
+                        }`}>
+                          {String.fromCharCode(65 + index)}
+                        </span>
+                        <span className="min-w-0 flex-1 break-words text-base font-semibold leading-7">{option}</span>
+                        {showResult && isCorrect && <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />}
+                        {showResult && isSelected && !isCorrect && <XCircle className="h-5 w-5 shrink-0 text-rose-600" />}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {showResult && (
+                <motion.div
+                  initial={{ y: 8, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-slate-800"
+                >
+                  <span className="mb-1 flex items-center gap-2 font-bold text-amber-800">
+                    <Sparkles className="h-4 w-4" />
+                    Giải thích
                   </span>
                   {q.explanation}
-                </p>
-              </motion.div>
-            )}
+                </motion.div>
+              )}
 
-            {/* Nút Next */}
-            {showResult && (
-              <div className="mt-6 flex justify-end">
-                <Button 
-                  onClick={nextQuestion} 
-                  size="lg"
-                  className="bg-slate-900 text-white hover:bg-slate-800 h-12 md:h-14 px-8 rounded-xl text-sm md:text-base font-semibold shadow-md"
+              <div className="mt-6 flex flex-col-reverse gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
+                <Button
+                  onClick={previousQuestion}
+                  disabled={currentQ === 0}
+                  variant="outline"
+                  className="h-11 rounded-lg border-slate-300 bg-white font-bold"
                 >
-                  {currentQ < existingQuiz.questions.length - 1 ? 'Câu tiếp theo' : 'Xem kết quả'}
-                  <ArrowRight className="w-5 h-5 ml-2" />
+                  <ChevronLeft className="mr-2 h-4 w-4" />
+                  Câu trước
+                </Button>
+
+                <Button
+                  onClick={nextQuestion}
+                  disabled={!showResult}
+                  className="h-11 rounded-lg bg-emerald-600 px-5 font-bold text-white hover:bg-emerald-700"
+                >
+                  {currentQ < questions.length - 1 ? 'Câu tiếp theo' : 'Xem kết quả'}
+                  <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </div>
-            )}
-          </motion.div>
-        </AnimatePresence>
+            </motion.section>
+          </AnimatePresence>
+        </div>
       </div>
-    );
-  }
-
-  return null;
+    </div>
+  );
 }

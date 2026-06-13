@@ -20,6 +20,7 @@ import {
   translateWordService,
   updateVideoCommentService,
   updateVideoService,
+
 } from '../services/videoService.js';
 
 const getCurrentUserId = (req) => req.user?.id || req.user?.userId;
@@ -191,8 +192,10 @@ export const analyzeVideoController = async (req, res) => {
   if (!req.body.url) return res.status(400).json({ error: 'URL is required' });
 
   try {
+    console.log("đã gọi controller video analyze");
     const result = await analyzeVideoScriptService(req.body.url);
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    console.log("đã xong controller video analyze");
     return res.json(result);
   } catch (error) {
     return res.status(500).json({ error: 'Failed to analyze video', details: error?.message || 'Unknown error', cause: error?.cause?.code || null });
@@ -231,7 +234,8 @@ export const saveVideoController = async (req, res) => {
       videoId: newVideo._id, jlptLevel: newVideo.jlpt_level, script: newVideo.script, vocab_list: newVideo.vocab_list, quiz: newQuiz
     });
   } catch (error) {
-    res.status(500).json({ error: 'Lỗi khi xử lý dữ liệu video và AI' });
+    console.error('❌ [saveVideoController] Lỗi:', error.message, error.stack);
+    res.status(500).json({ error: 'Lỗi khi xử lý dữ liệu video và AI', details: error.message });
   }
 };
 

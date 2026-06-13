@@ -25,6 +25,7 @@ export const savedToFlashcard = (item: SavedLearningItem): FlashcardItem => ({
   stroke_count: item.stroke_count,
   freq: item.freq,
   detail: item.detail,
+  img: item.img,
   example_sentence: item.example_sentence,
   example_meaning: item.example_meaning,
   next_review_date: item.next_review_date,
@@ -56,6 +57,7 @@ export const kanjiToFlashcard = (item: KanjiLibraryItem): FlashcardItem => ({
   stroke_count: item.stroke_count,
   freq: item.freq,
   detail: item.detail,
+  img: item.img,
 });
 
 export const calculateNextReview = (quality: number, easeFactor = 2.5, interval = 1) => {
