@@ -163,7 +163,7 @@ export default function CompactBanner({
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+            <form className="flex flex-col gap-3">
               <div className="relative flex items-center w-full min-w-0">
                 <Youtube className="absolute left-3 w-5 h-5 text-rose-500 shrink-0" />
                 <Input
@@ -189,7 +189,7 @@ export default function CompactBanner({
                     transition-colors px-2
                   "
                 >
-                  <span className="truncate">Bắt đầu</span>
+                  <span className="truncate">Chức năng tạo bài học bị disable do không đủ chi phí thuê server AI</span>
                   <ArrowRight className="w-4 h-4 ml-1 shrink-0" />
                 </Button>
               </div>

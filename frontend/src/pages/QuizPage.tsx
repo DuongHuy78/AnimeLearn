@@ -326,12 +326,11 @@ export default function QuizPage({ videoId = null, script = [], ytId }: QuizPage
           </div>
 
           <Button
-            onClick={() => generateQuizMutation.mutate()}
             disabled={!script || script.length === 0}
             className="h-11 w-full rounded-lg bg-emerald-600 text-sm font-bold text-white hover:bg-emerald-700 sm:w-auto"
           >
             <Sparkles className="mr-2 h-4 w-4" />
-            Tạo quiz bằng AI
+            Chức năng tạo quiz bị disable do không đủ chi phí, hãy làm quiz ở video có sẵn quiz
           </Button>
 
           {(!script || script.length === 0) && (

@@ -208,6 +208,27 @@ export default function Login() {
             </Button>
           </form>
 
+          {/* --- Fake Account for Testing --- */}
+          <div className="flex items-center justify-between p-3 mt-2 bg-red-50 border border-red-100 rounded-lg">
+            <div className="text-xs text-red-800 space-y-0.5">
+              <p className="font-bold text-xl">Test Account</p>
+              <p className="opacity-80">leduonghuy.7.8.5@gmail.com / A11223344@</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setEmail('leduonghuy.7.8.5@gmail.com');
+                setPassword('A11223344@');
+                setErrors({ email: '', password: '' }); // Clear any existing errors
+              }}
+              className="px-3 py-1.5 text-xs font-semibold text-red-700 bg-white border border-red-200 rounded-md shadow-sm hover:bg-red-50 hover:border-red-300 transition-all focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
+            >
+              Autofill
+            </button>
+          </div>
+          {/* -------------------------------- */}
+
+
           <p className="text-center text-slate-600 text-sm">
             Don't have an account?{' '}
             <Link to="/signup" className="text-red-600 hover:text-red-700 font-bold transition-colors">
