@@ -211,7 +211,7 @@ export default function Login() {
           {/* --- Fake Account for Testing --- */}
           <div className="flex items-center justify-between p-3 mt-2 bg-red-50 border border-red-100 rounded-lg">
             <div className="text-xs text-red-800 space-y-0.5">
-              <p className="font-bold text-xl">Test Account</p>
+              <p className="font-bold">Test Account</p>
               <p className="opacity-80">leduonghuy.7.8.5@gmail.com / A11223344@</p>
             </div>
             <button

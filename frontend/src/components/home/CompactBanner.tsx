@@ -37,10 +37,10 @@ export default function CompactBanner({
   const isAdmin = currentUser?.role === 'admin';
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!isAdmin && youtubeUrl.trim()) {
-      navigate(`/VideoWorkspace?url=${encodeURIComponent(youtubeUrl.trim())}`);
-    }
+    // e.preventDefault();
+    // if (!isAdmin && youtubeUrl.trim()) {
+    //   navigate(`/VideoWorkspace?url=${encodeURIComponent(youtubeUrl.trim())}`);
+    // }
   };
 
   return (
@@ -163,7 +163,7 @@ export default function CompactBanner({
               </p>
             </div>
 
-            <form className="flex flex-col gap-3">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-3">
               <div className="relative flex items-center w-full min-w-0">
                 <Youtube className="absolute left-3 w-5 h-5 text-rose-500 shrink-0" />
                 <Input
