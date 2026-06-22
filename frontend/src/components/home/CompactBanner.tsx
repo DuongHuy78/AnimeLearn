@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+// import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -27,7 +27,7 @@ export default function CompactBanner({
   userProgress = '12 bài' 
 }: CompactBannerProps) {
   const [youtubeUrl, setYoutubeUrl] = useState('');
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
   const { data: currentUser } = useQuery({
     queryKey: ['current-user'],
     queryFn: fetchCurrentUser,
@@ -36,12 +36,6 @@ export default function CompactBanner({
   });
   const isAdmin = currentUser?.role === 'admin';
 
-  const handleSubmit = (e: React.FormEvent) => {
-    // e.preventDefault();
-    // if (!isAdmin && youtubeUrl.trim()) {
-    //   navigate(`/VideoWorkspace?url=${encodeURIComponent(youtubeUrl.trim())}`);
-    // }
-  };
 
   return (
   <section className="w-full pt-6 px-4 md:px-6 animate-in fade-in slide-in-from-top-4 duration-700">
@@ -163,7 +157,7 @@ export default function CompactBanner({
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+            <form onSubmit={(e) => e.preventDefault()} className="flex flex-col gap-3">
               <div className="relative flex items-center w-full min-w-0">
                 <Youtube className="absolute left-3 w-5 h-5 text-rose-500 shrink-0" />
                 <Input
