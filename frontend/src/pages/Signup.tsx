@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Mail, Lock, User, CheckCircle, Eye, EyeOff, Loader, ArrowLeft } from 'lucide-react';
 import { authApi } from '@/api/auth.api';
 import { ApiError } from '@/api/client';
+import shinraBg from '@/assets/images/Shinra.png';
 
 export default function Signup() {
   const navigate = useNavigate();
@@ -126,7 +127,7 @@ export default function Signup() {
         <div 
           className="hidden lg:flex flex-col justify-between p-12 relative overflow-hidden bg-cover bg-center"
           style={{
-            backgroundImage: 'url(/src/assets/images/Shinra.png)',
+            backgroundImage: `url(${shinraBg})`,
           }}
         >
           <div className="absolute inset-0 bg-[#b90000] mix-blend-multiply opacity-90"></div>

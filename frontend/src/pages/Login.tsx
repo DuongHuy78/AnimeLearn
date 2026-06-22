@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Mail, Lock, Eye, EyeOff, Loader, ArrowLeft } from 'lucide-react';
 import { authApi } from '@/api/auth.api';
 import { ApiError } from '@/api/client';
+import shinraBg from '@/assets/images/Shinra.png';
+
 
 export default function Login() {
   const navigate = useNavigate();
@@ -95,7 +97,7 @@ export default function Login() {
       <div 
         className="hidden lg:flex flex-col justify-between min-h-screen p-12 relative overflow-hidden bg-cover bg-center"
         style={{
-          backgroundImage: 'url(/src/assets/images/Shinra.png)',
+          backgroundImage: `url(${shinraBg})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center'
         }}
