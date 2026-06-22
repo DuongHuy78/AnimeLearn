@@ -77,6 +77,15 @@ Keep motivation running high with continuous streak calculation, rank leveling, 
 ![User Profile & Analytics - Part 1](https://github.com/user-attachments/assets/61171e7b-e6c1-450e-8b77-c98aa77d0223)
 ![User Profile & Analytics - Part 2](https://github.com/user-attachments/assets/7a48c637-9e1d-429e-8f8c-0f7c9976f66e)
 
+Ready to start your Japanese learning journey? **[Visit AnimeLearn Demo]([https://your-demo-link.com](https://anime-learn.vercel.app/))** and immerse yourself in the world of anime while mastering the language!
+
+**Key Highlights:**
+- 🎌 Learn from authentic anime content with native pronunciation
+- 📚 Interactive features: Shadowing, Karaoke, Quizzes, and AI Grammar explanations
+- 📊 Track your progress with gamified learning analytics
+- 🎯 Structured by JLPT levels for all learner types
+
+Start your free trial today and transform your Japanese learning experience! 🌸
 ---
 
 
