@@ -2,8 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Home, Brain, BarChart3, Shield, MessageCircle,
-  Menu, ChevronRight, Search, Sun, Moon, ChevronDown, ArrowRight // ✨ Đã import thêm icon Search
+  Home, Brain, Shield,
+  Menu, ChevronRight, Search, Sun, Moon, ChevronDown, ArrowRight, FileText // ✨ Đã import thêm icon Search
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import animeLogo from '@/assets/animegirl.jpg';
@@ -18,8 +18,7 @@ const navItems = [
   { path: '/home', label: 'Trang chủ', icon: Home },
   { path: '/Dictionary', label: 'Từ điển', icon: Search },
   { path: '/Vocabulary', label: 'Flashcard', icon: Brain },
-  { path: '/Dashboard', label: 'Dashboard', icon: BarChart3 },
-  { path: '/AIChatTutor', label: 'AI Tutor', icon: MessageCircle },
+  { path: '/ExamLibrary', label: 'Kho đề thi', icon: FileText },
 ];
 
 interface User {

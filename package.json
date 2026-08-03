@@ -8,10 +8,12 @@
     "start:backend": "npm run dev --prefix backend",
     "start:ai": "cd backend/src/scripts && py server_AI.py",
     "start": "concurrently \"npm run start:backend\" \"npm run start:frontend\" \"npm run start:ai\"",
+    "start-noai": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
     "install:all": "npm install && npm install --prefix backend && npm install --prefix frontend"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "vite-plugin-react-source-locator": "^0.2.1"
   },
   "dependencies": {
     "axios": "^1.16.1",

@@ -1,57 +1,65 @@
-import Quiz from '../models/Quiz.js'; // Nhớ đường dẫn đến file Model lúc nãy
-import { generateQuizFromScript } from '../services/quizAiService.js';
+import Quiz from '../models/Quiz.js';
+import Video from '../models/Video.js';
+import { generateQuizFromScript } from '../services/quizAIService.js';
 
-// Lấy Quiz theo Video ID
 export const getQuizByVideoId = async (req, res) => {
     try {
         const { videoId } = req.params;
-        
+
         const quiz = await Quiz.findOne({ videoId });
         if (!quiz) {
-            return res.status(404).json({ message: "Chưa có quiz cho video này" });
+            return res.status(404).json({ message: 'Chua co quiz cho video nay' });
         }
 
         res.status(200).json(quiz);
     } catch (error) {
-        console.error("Lỗi khi lấy quiz:", error);
-        res.status(500).json({ error: "Lỗi máy chủ khi lấy dữ liệu bài tập" });
+        console.error('Loi khi lay quiz:', error);
+        res.status(500).json({ error: 'Loi may chu khi lay du lieu bai tap' });
     }
 };
 
-// Gọi AI tạo Quiz và lưu vào Database
 export const generateQuizForVideo = async (req, res) => {
     try {
         const { videoId } = req.params;
         const { script } = req.body;
 
-        if (!script || !Array.isArray(script) || script.length === 0) {
-            return res.status(400).json({ error: "Kịch bản (script) không hợp lệ hoặc trống." });
+        const video = await Video.findById(videoId).select('duration script').lean();
+        if (!video) {
+            return res.status(404).json({ error: 'Khong tim thay video' });
         }
 
-        // 1. Kiểm tra xem Video này đã có Quiz chưa
+        const sourceScript = Array.isArray(script) && script.length > 0 ? script : video.script;
+        if (!Array.isArray(sourceScript) || sourceScript.length === 0) {
+            return res.status(400).json({ error: 'Script khong hop le hoac dang trong' });
+        }
+
         const existingQuiz = await Quiz.findOne({ videoId });
         if (existingQuiz) {
-            return res.status(400).json({ error: "Video này đã có bài tập rồi, không thể tạo thêm!" });
+            return res.status(400).json({ error: 'Video nay da co bai tap roi' });
         }
 
-        // 2. Gọi AI sinh câu hỏi
-        const generatedQuestions = await generateQuizFromScript(script);
+        const aiResult = await generateQuizFromScript(sourceScript, {
+            durationSeconds: video.duration || 0,
+        });
 
-        if (!generatedQuestions || generatedQuestions.length === 0) {
-            return res.status(500).json({ error: "AI không thể tạo được câu hỏi nào từ kịch bản này." });
+        if (!aiResult?.questions?.length) {
+            return res.status(500).json({ error: 'AI khong tao duoc cau hoi nao tu script nay' });
         }
 
-        // 3. Lưu vào Database
         const newQuiz = new Quiz({
             videoId,
-            questions: generatedQuestions
+            questions: aiResult.questions,
         });
 
         await newQuiz.save();
 
-        res.status(201).json(newQuiz);
+        if (aiResult.jlptLevel && aiResult.jlptLevel !== 'Unknown') {
+            await Video.findByIdAndUpdate(videoId, { jlpt_level: aiResult.jlptLevel });
+        }
+
+        res.status(201).json({ quiz: newQuiz, jlptLevel: aiResult.jlptLevel });
     } catch (error) {
-        console.error("Lỗi tạo Quiz:", error);
-        res.status(500).json({ error: "Lỗi hệ thống khi tạo bài tập bằng AI. Vui lòng thử lại sau." });
+        console.error('Loi tao Quiz:', error);
+        res.status(500).json({ error: 'Loi he thong khi tao bai tap bang AI' });
     }
 };

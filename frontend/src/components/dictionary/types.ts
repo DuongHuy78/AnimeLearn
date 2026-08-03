@@ -16,6 +16,7 @@ export interface KanjiInfo {
   level: number | string;
   stroke_count: number | string;
   detail: string;
+  img?: string;
 }
 
 export type WordData = {

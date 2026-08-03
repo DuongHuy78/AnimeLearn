@@ -15,7 +15,12 @@ from rag_worker import _vectorstore, ingest, chat, init_rag_system
 # Import Transcribe functions
 from transcribe import transcribe_media, log_err, init_transcribe_system
 
-app = FastAPI(title="AnimeLearn Unified Service - RAG + Transcribe")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await startup_event()
+    yield
+
+app = FastAPI(title="AnimeLearn Unified Service - RAG + Transcribe", lifespan=lifespan)
 
 @app.middleware("http")
 async def validate_api_key(request: Request, call_next):
@@ -38,7 +43,6 @@ async def validate_api_key(request: Request, call_next):
     response = await call_next(request)
     return response
 
-@app.on_event("startup")
 async def startup_event():
     print("🚀 Khởi tạo hệ thống AI...", file=sys.stderr)
     try:
@@ -95,6 +99,7 @@ def extract_media_title(media_path: str) -> str:
                 'quiet': True,
                 'no_warnings': True,
                 'noplaylist': True,
+                'extractor_args': {'youtube': {'player_client': ['android', 'web']}}
             }
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(media_path, download=False)
@@ -162,4 +167,4 @@ async def api_transcribe(payload: TranscribePayload):
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=9000)
+    uvicorn.run(app, host="0.0.0.0", port=9000)
